@@ -14,9 +14,12 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  describe('root health check', () => {
+    it('zwraca status ok', () => {
+      const status = appController.getStatus();
+      expect(status.service).toBe('otoapteka-backend');
+      expect(status.status).toBe('ok');
+      expect(typeof status.timestamp).toBe('string');
     });
   });
 });
