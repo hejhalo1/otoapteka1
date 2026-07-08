@@ -110,6 +110,10 @@ model Pharmacy {
   slug                  String    @unique // nazwa-miasto[-n]; stabilny mimo zmian w rejestrze
   removedFromRegistryAt DateTime? // soft delete — nigdy nie kasujemy fizycznie
 
+  // Sygnatura godzin z rejestru (konkat 8 kolumn). Pozwala nadpisywać OpeningHours(REGISTRY)
+  // tylko gdy faktycznie się zmieniły — bez przepisywania godzin całej bazy przy każdym syncu.
+  registryHoursKey String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
