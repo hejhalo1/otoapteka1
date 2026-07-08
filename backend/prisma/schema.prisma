@@ -13,10 +13,4 @@ datasource db {
   provider = "postgresql"
 }
 
-// Przykładowy model — usuń go i wpisz własne, potem uruchom `npx prisma migrate dev`.
-model Product {
-  id        Int      @id @default(autoincrement())
-  name      String
-  price     Int // cena w groszach
-  createdAt DateTime @default(now())
-}
+// Modele domenowe dodawane są w Fazie 1 (schemat aptek + PostGIS).
