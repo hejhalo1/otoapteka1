@@ -49,6 +49,9 @@ lerna-debug.log*
 .temp
 .tmp
 
+# Uploaded/processed images (runtime data)
+/uploads
+
 # Runtime data
 pids
 *.pid

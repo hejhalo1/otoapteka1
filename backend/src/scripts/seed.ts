@@ -21,11 +21,36 @@ async function main() {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       Logger.log(`Administrator ${email} już istnieje — pomijam.`, 'seed');
-      return;
+    } else {
+      const passwordHash = await argon2.hash(password, {
+        type: argon2.argon2id,
+      });
+      await prisma.user.create({
+        data: { email, passwordHash, role: 'ADMIN' },
+      });
+      Logger.log(`Utworzono administratora: ${email}`, 'seed');
     }
-    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-    await prisma.user.create({ data: { email, passwordHash, role: 'ADMIN' } });
-    Logger.log(`Utworzono administratora: ${email}`, 'seed');
+
+    // Słownik usług (idempotentny upsert po slug).
+    const services = [
+      { slug: 'szczepienia', name: 'Szczepienia' },
+      { slug: 'pomiar-cisnienia', name: 'Pomiar ciśnienia' },
+      { slug: 'pomiar-glukozy', name: 'Pomiar glukozy' },
+      { slug: 'przeglad-lekowy', name: 'Przegląd lekowy' },
+      {
+        slug: 'konsultacja-farmaceutyczna',
+        name: 'Konsultacja farmaceutyczna',
+      },
+      { slug: 'opatrunki', name: 'Zmiana opatrunków' },
+    ];
+    for (const s of services) {
+      await prisma.service.upsert({
+        where: { slug: s.slug },
+        create: s,
+        update: { name: s.name },
+      });
+    }
+    Logger.log(`Zseedowano słownik usług (${services.length}).`, 'seed');
   } finally {
     await app.close();
   }
