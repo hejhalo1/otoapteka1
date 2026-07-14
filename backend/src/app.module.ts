@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -36,6 +37,7 @@ import { SyncModule } from './sync/sync.module';
     SyncModule,
     PharmaciesModule,
     PanelModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [
