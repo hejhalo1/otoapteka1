@@ -47,6 +47,8 @@ export interface PharmacyCard {
     voivodeship: string;
   };
   phone: string | null;
+  lat: number | null;
+  lng: number | null;
   distanceMeters: number;
   walkMinutes: number;
   driveMinutes: number;
@@ -180,6 +182,8 @@ export class PharmaciesService {
           voivodeship: r.voivodeship,
         },
         phone: r.phone,
+        lat: r.lat,
+        lng: r.lng,
         distanceMeters: Math.round(r.distanceMeters),
         walkMinutes: 0,
         driveMinutes: 0,
