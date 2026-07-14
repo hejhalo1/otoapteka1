@@ -1,5 +1,6 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -13,6 +14,7 @@ async function bootstrap() {
 
   // Nagłówki bezpieczeństwa (CSP frontendu jest po stronie Next.js — patrz next.config).
   app.use(helmet());
+  app.use(cookieParser());
 
   // CORS zawężony do origin z env (nie enableCors() bez argumentów).
   const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')

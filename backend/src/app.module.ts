@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { GeoModule } from './geo/geo.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,6 +22,7 @@ import { SyncModule } from './sync/sync.module';
       throttlers: [{ ttl: 60_000, limit: 100 }],
     }),
     PrismaModule,
+    AuthModule,
     GeoModule,
     SyncModule,
     PharmaciesModule,
