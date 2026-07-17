@@ -1,13 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { GeoCoords, POLAND_BBOX } from './geo.types';
 
-export interface GeoCoords {
-  lat: number;
-  lng: number;
-}
-
-// Bounding box Polski — odrzucamy wyniki spoza kraju (błędne geokodowanie).
-const POLAND_BBOX = { minLat: 49.0, maxLat: 54.9, minLng: 14.1, maxLng: 24.2 };
+export type { GeoCoords };
 
 @Injectable()
 export class NominatimService {

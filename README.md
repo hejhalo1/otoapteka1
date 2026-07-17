@@ -13,7 +13,7 @@ Monorepo: **backend** (NestJS 11 + Prisma 7 + PostgreSQL 18/PostGIS) i **fronten
 |---|---|
 | Dane aptek | Rejestr Aptek (Centrum e-Zdrowia, dane.gov.pl, dataset 1925) — codzienny sync |
 | Baza | PostgreSQL 18 + PostGIS (kolumna `geography`, indeks GiST) |
-| Geokodowanie | Nominatim (OpenStreetMap), rate limit 1 req/s, cache w bazie |
+| Geokodowanie | GUGiK/UUG (oficjalny PRG) jako główne, Nominatim (OSM) jako zapasowe |
 | Wyszukiwanie po dystansie | PostGIS `ST_DWithin` + `ST_Distance` |
 | Trasy pieszo/autem | estymator haversine (domyślnie) / OSRM (za flagą) |
 | Mapa | Leaflet + kafelki OSM |
@@ -39,13 +39,18 @@ npx prisma migrate deploy     # tworzy schemat + PostGIS + indeks GiST
 npx prisma generate           # generuje klienta (gitignored)
 npm run db:seed               # tworzy admina (ADMIN_EMAIL/PASSWORD) + słownik usług
 npm run sync -- --no-geocode  # import realnych aptek z rejestru (~21 tys., ~30 s)
-npm run geocode -- --limit=100 --city=Warszawa   # geokodowanie partii (1 req/s)
+npm run geocode -- --limit=20000            # geokodowanie całej bazy (GUGiK, ~25 min)
+npm run geocode -- --limit=500 --city=Kraków  # albo partia dla jednego miasta
 npm run start:dev             # http://localhost:3001/api
 ```
 
 - **Sync** rejestru: nocny cron (`SYNC_CRON`, Europe/Warsaw) + `POST /api/admin/sync` (ADMIN).
-- **Geokodowanie**: publiczny Nominatim throttluje bulk — pełne pokrycie ~12 tys. aptek
-  to proces wielu nocy (`GEOCODE_MAX_PER_RUN`/noc) lub self-host Nominatim.
+- **Geokodowanie**: główne źródło to **UUG GUGiK** (`services.gugik.gov.pl/uug`) oparte o
+  PRG — bez limitu 1 req/s, skuteczność ~96%. Zwraca EPSG:2180, przeliczamy na WGS84
+  przez `proj4` (zgodność z `ST_Transform` PostGIS zweryfikowana do ~2 cm). Nominatim
+  został jako zapas dla adresów, których PRG nie zna (`GEOCODE_NOMINATIM_FALLBACK=false`
+  wyłącza). Flaga `--retry-failed` ponawia wcześniejsze porażki (potrzebna po zmianie
+  geokodera — inaczej `geocodeFailed` trwale wyklucza rekord).
 
 ## Uruchomienie — frontend
 
@@ -78,7 +83,7 @@ cd frontend && npm run build && npx eslint app components lib
 helmet + CSP (Next); ValidationPipe (whitelist); CORS z env; throttling (100/min, auth 5/min);
 argon2id; rotacja refresh z reuse-detection (unieważnienie rodziny); cookie httpOnly/SameSite;
 guardy IDOR-proof (panel operuje na `user.pharmacyId` z JWT); SQL wyłącznie przez Prisma /
-parametryzowany `$queryRaw` (PostGIS); SSRF-whitelist (dane.gov.pl, Nominatim, OSRM);
+parametryzowany `$queryRaw` (PostGIS); SSRF-whitelist (dane.gov.pl, GUGiK, Nominatim, OSRM);
 upload: magic bytes + re-encode sharp→WebP (strip EXIF) + losowa nazwa + moderacja;
 lokalizacja użytkownika nigdy nie zapisywana ani logowana (RODO).
 
@@ -87,6 +92,14 @@ lokalizacja użytkownika nigdy nie zapisywana ani logowana (RODO).
 - `xlsx@0.18.5` (SheetJS z npm) ma CVE (proto pollution/ReDoS) bez fixu w rejestrze npm —
   ryzyko ograniczone (źródło rządowe po TLS + SSRF-whitelist + walidacja); produkcyjnie
   build z CDN SheetJS 0.20.x. Rejestr publikuje realnie **legacy `.xls`**, nie `.xlsx`.
-- Publiczny Nominatim/OSRM/kafelki OSM tylko do developmentu — produkcyjnie self-host / płatny tier.
+- Rejestr ma zapieczone escapowanie CSV w komórkach (`Aleja ""Solidarności"" 82`), miejscami
+  podwójne; parser to rozwija. Pojedyncze rekordy mają w polu właściciela wklejoną nazwę
+  kolumny z nagłówka — to śmieć źródłowy, nie do naprawienia po naszej stronie.
+- ~4% adresów nie geokoduje się w żadnym źródle (zakresy typu `51/53` z numerem lokalu,
+  literówki w rejestrze). Te apteki mają `geocodeFailed=true` i nie pojawiają się w wyszukiwaniu
+  po dystansie — apteka bez współrzędnych nie ma jak trafić do zapytania `ST_DWithin`.
+- Publiczny OSRM/kafelki OSM tylko do developmentu — produkcyjnie self-host / płatny tier.
+  UUG GUGiK jest darmowe i bez twardego limitu, ale to usługa publiczna — respektujemy
+  odstęp (`GUGIK_MIN_INTERVAL_MS`) i umiarkowaną współbieżność (`GEOCODE_CONCURRENCY`).
 - CSP używa `'unsafe-inline'` (script/style) — docelowo strict CSP z nonce przez middleware.
 - Multer (transitive @nestjs/platform-express) ma ostrzeżenie audytu — do śledzenia przy aktualizacji Nest.

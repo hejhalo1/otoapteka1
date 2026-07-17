@@ -112,7 +112,23 @@ export class RegistryParserService {
   private cell(row: Cell[], index: number): string {
     if (index < 0 || index >= row.length) return '';
     const v = row[index];
-    return v == null ? '' : String(v).trim();
+    return v == null ? '' : this.unescapeQuotes(String(v).trim());
+  }
+
+  // Rejestr generuje .xls z CSV i zostawia w komórkach escapowanie CSV: podwójny
+  // cudzysłów oznacza jeden literalny (Apteka ""Vena"" → Apteka "Vena"). W całym
+  // rejestrze nie ma ani jednego pojedynczego `"`, więc zamiana jest bezstratna.
+  // Ścieżka CSV rozwija escapowanie sama (csv-parse), więc tam to no-op.
+  //
+  // Powtarzamy aż do stabilizacji, bo pojedyncze rekordy przeszły przez dwie rundy
+  // eskejpowania (""""VITA"""" → ""VITA"" → "VITA") i jedno przejście ich nie czyści.
+  private unescapeQuotes(value: string): string {
+    let out = value;
+    for (let prev = ''; out !== prev;) {
+      prev = out;
+      out = out.replace(/""/g, '"');
+    }
+    return out;
   }
 
   private readSpreadsheet(buffer: Buffer): Cell[][] {
