@@ -24,6 +24,15 @@ describe('streetVariants', () => {
     ]);
   });
 
+  it('zdejmuje fikcyjny prefiks "ul." gdy ulica to sam numer domu (wieś)', () => {
+    // Realny rekord: Chorągwica ma w polu ulicy "ul. 140" — UUG zna to jako "Chorągwica 140".
+    expect(streetVariants('ul. 140')).toEqual(['ul. 140', '140']);
+  });
+
+  it('nie zdejmuje prefiksu prawdziwej ulicy', () => {
+    expect(streetVariants('ul. Bydgoska 2')).toEqual(['ul. Bydgoska 2']);
+  });
+
   it('nie duplikuje wariantów dla prostego adresu', () => {
     expect(streetVariants('ul. Bronowicka 78')).toEqual(['ul. Bronowicka 78']);
   });

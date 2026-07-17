@@ -10,17 +10,26 @@
 export function streetVariants(street: string | null): string[] {
   const full = (street ?? '').trim();
   if (!full) return [];
-  const out = [full];
+
+  const out: string[] = [];
+  const push = (value: string): void => {
+    const trimmed = value.trim();
+    if (trimmed && !out.includes(trimmed)) out.push(trimmed);
+  };
+
+  push(full);
 
   // Bez części po pierwszym ukośniku: "Żmigrodzka 15/lokal 1A-1B" → "Żmigrodzka 15".
   const noUnit = full.replace(/\/.*$/, '').trim();
-  if (noUnit && !out.includes(noUnit)) out.push(noUnit);
+  push(noUnit);
+
+  // Wsiom rejestr wpisuje numer domu w pole ulicy ("ul. 140" w Chorągwicy) — prefiks
+  // typu ulicy jest wtedy fikcją i blokuje dopasowanie. Zostawiamy sam numer.
+  // Lookahead na cyfrę celowo chroni prawdziwe ulice ("ul. Bydgoska 2" zostaje bez zmian).
+  push(noUnit.replace(/^[a-ząćęłńóśźż]+\.\s*(?=\d)/i, ''));
 
   // Goły numer budynku bez sufiksu literowego: "Targowa 1C" → "Targowa 1".
-  const bare = noUnit
-    .replace(/(\d+)\s*[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]+$/, '$1')
-    .trim();
-  if (bare && !out.includes(bare)) out.push(bare);
+  push(noUnit.replace(/(\d+)\s*[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]+$/, '$1'));
 
   return out;
 }
