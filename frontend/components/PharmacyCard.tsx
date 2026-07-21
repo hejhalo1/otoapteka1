@@ -70,7 +70,10 @@ export function PharmacyCard({ pharmacy, index = 0 }: { pharmacy: Card; index?: 
       className="card-hover animate-card-in group block rounded-2xl border bg-surface p-4 shadow-[var(--shadow-card)] sm:px-5"
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3.5">
+      {/* Na xl karta staje się siatką o stałych kolumnach — wszystkie wiersze listy
+          są idealnie równe niezależnie od treści (kolumna „Info z apteki" rezerwuje
+          miejsce nawet gdy apteka nic nie opublikowała). Poniżej xl: flex-wrap. */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3.5 xl:grid xl:grid-cols-[minmax(0,1.4fr)_6.5rem_7rem_7rem_11rem_minmax(0,12rem)_4.5rem] xl:gap-x-4">
         <div className="flex min-w-0 flex-1 basis-60 items-center gap-3.5">
           <CrossTile is24h={is24h} />
           <div className="min-w-0">
@@ -88,12 +91,13 @@ export function PharmacyCard({ pharmacy, index = 0 }: { pharmacy: Card; index?: 
         <Stat Icon={Footprints} value={formatMinutes(p.walkMinutes)} label="pieszo" />
         <Stat Icon={Car} value={formatMinutes(p.driveMinutes)} label="autem" />
 
-        <div className="leading-tight">
+        <div className="min-w-0 leading-tight">
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-bold tabular-nums",
+              "inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 font-bold tabular-nums",
               PILL_BY_STATE[p.openStatus.state],
             )}
+            title={hoursStr}
           >
             {live && (
               <span className="relative flex h-2 w-2" aria-hidden>
@@ -101,26 +105,29 @@ export function PharmacyCard({ pharmacy, index = 0 }: { pharmacy: Card; index?: 
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
               </span>
             )}
-            {hoursStr}
+            <span className="truncate">{hoursStr}</span>
           </span>
-          <div className="mt-1 text-[11px] text-muted">{meta.label}</div>
+          <div className="mt-1 truncate text-[11px] text-muted">{meta.label}</div>
         </div>
 
-        {p.latestAnnouncement && (
-          <div className="hidden min-w-0 max-w-44 lg:block">
-            <p className="flex items-center gap-1.5 text-sm font-bold text-pharma">
-              <Megaphone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        {p.latestAnnouncement ? (
+          <div className="hidden min-w-0 lg:block">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-pharma px-2.5 py-0.5 text-xs font-bold text-white">
+              <Megaphone className="h-3 w-3 shrink-0" aria-hidden />
               Info z apteki
-            </p>
-            <p className="truncate text-xs text-muted" title={p.latestAnnouncement.title}>
+            </span>
+            <p className="mt-1 truncate text-xs text-muted" title={p.latestAnnouncement.title}>
               {ANNOUNCEMENT_LABELS[p.latestAnnouncement.type] ?? "Komunikat"}
               {" · "}
               {p.latestAnnouncement.title}
             </p>
           </div>
+        ) : (
+          // Pusty placeholder utrzymuje siatkę kolumn — wiersze się nie rozjeżdżają.
+          <div className="hidden xl:block" aria-hidden />
         )}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1.5 xl:ml-0 xl:justify-end">
           <FavoriteButton slug={p.slug} />
           <ChevronRight className="chev h-5 w-5 text-muted" aria-hidden />
         </div>

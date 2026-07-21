@@ -164,7 +164,8 @@ export function HeroMap() {
   if (!coords) return <DecorativeMap />;
 
   return (
-    <div className="relative h-full overflow-hidden rounded-3xl border shadow-[var(--shadow-card)]">
+    // isolate: z-indexy mapy i przycisku nie wychodzą ponad sticky header.
+    <div className="relative isolate h-full overflow-hidden rounded-3xl border shadow-[var(--shadow-card)]">
       <MapView
         center={coords}
         zoom={14}
@@ -178,7 +179,7 @@ export function HeroMap() {
       />
       <Link
         href="/mapa"
-        className="pressable absolute bottom-3 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-bold text-white shadow-[var(--shadow-pop)] transition-colors hover:bg-primary"
+        className="pressable absolute bottom-3 left-1/2 z-[1001] flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-bold text-white shadow-[var(--shadow-pop)] transition-colors hover:bg-primary"
       >
         <Expand className="h-4 w-4" aria-hidden />
         Otwórz pełną mapę

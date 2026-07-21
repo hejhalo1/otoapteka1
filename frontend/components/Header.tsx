@@ -6,7 +6,7 @@ import { FontScale } from "./FontScale";
 export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b bg-surface/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
         <Link
           href="/"
           className="pressable flex shrink-0 items-center gap-2.5"

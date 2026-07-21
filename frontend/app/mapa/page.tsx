@@ -63,7 +63,7 @@ export default function MapaPage() {
     .map((p) => ({ lat: p.lat as number, lng: p.lng as number, name: p.name, slug: p.slug }));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-7xl px-4 py-6">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-extrabold tracking-tight text-ink">Mapa aptek</h1>
         <button

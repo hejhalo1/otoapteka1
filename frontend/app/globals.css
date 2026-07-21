@@ -275,8 +275,10 @@ body {
   }
 }
 
-/* Leaflet: kontener mapy. */
+/* Leaflet: kontener mapy. isolation zamyka wysokie z-indexy paneli Leafleta
+   (400–1000) we własnym kontekście — bez tego mapa najeżdża na sticky header. */
 .leaflet-container {
   font-family: var(--font-sans);
   border-radius: var(--radius-lg);
+  isolation: isolate;
 }

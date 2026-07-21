@@ -4,7 +4,7 @@ import { LogoMark, Wordmark } from "./Logo";
 export function Footer() {
   return (
     <footer className="mt-16 border-t bg-surface">
-      <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-muted">
+      <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-muted">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2">

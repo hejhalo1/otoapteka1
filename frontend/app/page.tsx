@@ -13,7 +13,7 @@ const FEATURES = [
 
 export default function HomePage() {
   return (
-    <div className="mx-auto max-w-6xl px-4">
+    <div className="mx-auto max-w-7xl px-4">
       {/* ---- Hero ---- */}
       <section className="grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-[1.05fr_1fr] lg:gap-12">
         <div>
