@@ -9,9 +9,10 @@ export function LogoMark({ className }: { className?: string }) {
       aria-hidden
       fill="none"
     >
+      {/* Uwaga: w atrybutach SVG nie działa var(--...) — kolory na sztywno. */}
       <path
         d="M20 1C9.5 1 1 9.4 1 19.8 1 32.4 20 47 20 47s19-14.6 19-27.2C39 9.4 30.5 1 20 1z"
-        fill="var(--color-pharma)"
+        fill="#279c53"
       />
       <path
         d="M20 1C9.5 1 1 9.4 1 19.8 1 32.4 20 47 20 47s19-14.6 19-27.2C39 9.4 30.5 1 20 1z"

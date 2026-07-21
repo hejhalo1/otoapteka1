@@ -1,5 +1,16 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Minus } from "lucide-react";
+import { Expand, Plus, Minus } from "lucide-react";
+import { MapView } from "@/components/map/MapView";
+import { fetchPharmacies } from "@/lib/api";
+import { getCurrentPosition, type Coords } from "@/lib/geo";
+import type { PharmacyCard } from "@/lib/types";
+
+/* Uwaga: w atrybutach SVG nie działa var(--...) — kolory palety na sztywno. */
+const PHARMA = "#279c53";
+const PRIMARY = "#2b539e";
 
 /** Zielony pin apteczny (jak logo) używany na dekoracyjnej mapie hero. */
 function Pin({ x, y, delay, scale = 1 }: { x: number; y: number; delay: number; scale?: number }) {
@@ -13,7 +24,7 @@ function Pin({ x, y, delay, scale = 1 }: { x: number; y: number; delay: number; 
         <g transform="translate(-14 -34)">
           <path
             d="M14 0C6.3 0 0 6.2 0 13.9 0 23.2 14 34 14 34s14-10.8 14-20.1C28 6.2 21.7 0 14 0z"
-            fill="var(--color-pharma)"
+            fill={PHARMA}
           />
           <rect x="11.4" y="6.6" width="5.2" height="14" rx="1.6" fill="white" />
           <rect x="7" y="11" width="14" height="5.2" rx="1.6" fill="white" />
@@ -24,24 +35,21 @@ function Pin({ x, y, delay, scale = 1 }: { x: number; y: number; delay: number; 
 }
 
 /**
- * Dekoracyjna mapa hero — czysty SVG (zero kafelków = natychmiastowy paint).
- * Piny spadają staggerowane, kropka lokalizacji pulsuje. Klik → pełna mapa.
+ * Dekoracyjna mapa (fallback, zanim znamy lokalizację) — czysty SVG.
+ * Klik przenosi na pełną mapę /mapa, gdzie można poruszać się bez lokalizacji.
  */
-export function HeroMap() {
+function DecorativeMap() {
   return (
     <Link
       href="/mapa"
       aria-label="Otwórz pełną mapę aptek"
-      className="card-hover group relative block overflow-hidden rounded-3xl border bg-surface shadow-[var(--shadow-card)]"
+      className="card-hover group relative block h-full overflow-hidden rounded-3xl border bg-surface shadow-[var(--shadow-card)]"
     >
-      <svg viewBox="0 0 560 420" className="h-full w-full" role="img" aria-hidden>
+      <svg viewBox="0 0 560 420" className="h-full w-full" role="img" aria-hidden preserveAspectRatio="xMidYMid slice">
         {/* Tło mapy */}
         <rect width="560" height="420" fill="#eef1ee" />
         {/* Woda */}
-        <path
-          d="M420 0c-30 60-10 120 30 170s60 130 30 250h80V0z"
-          fill="#d7e6f5"
-        />
+        <path d="M420 0c-30 60-10 120 30 170s60 130 30 250h80V0z" fill="#d7e6f5" />
         {/* Parki */}
         <ellipse cx="120" cy="330" rx="110" ry="70" fill="#ddecd9" />
         <ellipse cx="360" cy="70" rx="80" ry="50" fill="#e2efdd" />
@@ -52,23 +60,23 @@ export function HeroMap() {
         ].map(([x, y, w, h], i) => (
           <rect key={i} x={x} y={y} width={w} height={h} rx="8" fill="#e5e9ee" />
         ))}
-        {/* Ulice */}
-        <g stroke="#ffffff" strokeLinecap="round">
+        {/* Ulice — fill="none" jest kluczowe: bez niego SVG wypełnia ścieżki na czarno */}
+        <g stroke="#ffffff" fill="none" strokeLinecap="round">
           <path d="M0 120 H560" strokeWidth="14" />
           <path d="M0 226 H430 C470 226 480 260 480 300 V420" strokeWidth="18" />
           <path d="M132 0 V420" strokeWidth="14" />
           <path d="M262 0 V300 C262 330 290 340 320 340 H560" strokeWidth="12" />
           <path d="M0 330 H150" strokeWidth="10" />
         </g>
-        <g stroke="#f6f8f7" strokeWidth="4" strokeDasharray="1 14" strokeLinecap="round">
+        <g stroke="#dfe5ea" fill="none" strokeWidth="4" strokeDasharray="1 14" strokeLinecap="round">
           <path d="M0 226 H430" />
           <path d="M132 0 V420" />
         </g>
 
         {/* Kropka lokalizacji użytkownika z pulsującą aureolą */}
         <g transform="translate(262 226)">
-          <circle r="26" fill="var(--color-primary)" opacity="0.5" className="animate-halo" />
-          <circle r="10" fill="var(--color-primary)" stroke="white" strokeWidth="3.5" />
+          <circle r="26" fill={PRIMARY} opacity="0.5" className="animate-halo" />
+          <circle r="10" fill={PRIMARY} stroke="white" strokeWidth="3.5" />
         </g>
 
         {/* Piny aptek — staggerowany drop */}
@@ -99,5 +107,82 @@ export function HeroMap() {
         </span>
       </div>
     </Link>
+  );
+}
+
+/**
+ * Mapa hero zintegrowana z lokalizacją:
+ * - zgoda już wydana (Permissions API) → od razu prawdziwa mapa okolicy z aptekami;
+ * - użytkownik kliknie „Użyj mojej lokalizacji” lub wybierze miasto → lista wysyła
+ *   zdarzenie `otoapteka:located` i mapa przełącza się na prawdziwą;
+ * - brak zgody / odmowa → ilustracja, której klik prowadzi na /mapa (swobodne
+ *   przeglądanie bez podawania lokalizacji).
+ */
+export function HeroMap() {
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [items, setItems] = useState<PharmacyCard[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Zgoda wydana wcześniej? Pokaż od razu okolicę — bez wyskakującego pytania.
+    (async () => {
+      try {
+        const perm = await navigator.permissions?.query({ name: "geolocation" });
+        if (perm?.state === "granted") {
+          const c = await getCurrentPosition();
+          if (!cancelled) setCoords(c);
+        }
+      } catch {
+        /* brak Permissions API — zostaje ilustracja do czasu zdarzenia located */
+      }
+    })();
+
+    const onLocated = (e: Event) => {
+      const detail = (e as CustomEvent<Coords>).detail;
+      if (detail) setCoords(detail);
+    };
+    window.addEventListener("otoapteka:located", onLocated);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("otoapteka:located", onLocated);
+    };
+  }, []);
+
+  // Apteki wokół znanej pozycji — jako piny na mapie hero.
+  useEffect(() => {
+    if (!coords) return;
+    const ctrl = new AbortController();
+    fetchPharmacies({ lat: coords.lat, lng: coords.lng, radiusKm: 5, perPage: 25 }, ctrl.signal)
+      .then((res) => setItems(res.data.filter((p) => p.lat != null && p.lng != null)))
+      .catch(() => {
+        /* mapa bez pinów to wciąż mapa */
+      });
+    return () => ctrl.abort();
+  }, [coords]);
+
+  if (!coords) return <DecorativeMap />;
+
+  return (
+    <div className="relative h-full overflow-hidden rounded-3xl border shadow-[var(--shadow-card)]">
+      <MapView
+        center={coords}
+        zoom={14}
+        pickMarker={coords}
+        markers={items.map((p) => ({
+          lat: p.lat as number,
+          lng: p.lng as number,
+          name: p.name,
+          slug: p.slug,
+        }))}
+      />
+      <Link
+        href="/mapa"
+        className="pressable absolute bottom-3 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-bold text-white shadow-[var(--shadow-pop)] transition-colors hover:bg-primary"
+      >
+        <Expand className="h-4 w-4" aria-hidden />
+        Otwórz pełną mapę
+      </Link>
+    </div>
   );
 }

@@ -92,18 +92,24 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
     void load(coords, 1, true);
   }, [coords, date, openNow, load]);
 
+  // Ustala pozycję i rozgłasza ją (mapa hero przełącza się na prawdziwą okolicę).
+  const applyCoords = useCallback((c: Coords) => {
+    setCoords(c);
+    window.dispatchEvent(new CustomEvent<Coords>("otoapteka:located", { detail: c }));
+  }, []);
+
   const locate = useCallback(async () => {
     setLocating(true);
     setGeoError(null);
     try {
       const c = await getCurrentPosition();
-      setCoords({ ...c, label: "Twoja lokalizacja" });
+      applyCoords({ ...c, label: "Twoja lokalizacja" });
     } catch (err) {
       setGeoError(GEO_ERROR_MESSAGES[err as GeoError] ?? GEO_ERROR_MESSAGES.unavailable);
     } finally {
       setLocating(false);
     }
-  }, []);
+  }, [applyCoords]);
 
   // „Moja lokalizacja” z hero/headera + wejście z flagą ?lokalizuj=1 (inne strony).
   // locate() w efekcie to inicjalizacja z zewnętrznego systemu (URL) — false-positive.
@@ -193,7 +199,7 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
               {CITIES.map((c) => (
                 <button
                   key={c.label}
-                  onClick={() => setCoords(c)}
+                  onClick={() => applyCoords(c)}
                   className="pressable rounded-full border bg-bg px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition-colors hover:border-pharma hover:bg-pharma-soft hover:text-pharma-dark"
                 >
                   {c.label}
