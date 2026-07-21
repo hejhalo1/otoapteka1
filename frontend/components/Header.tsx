@@ -9,10 +9,10 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
         <Link
           href="/"
-          className="pressable flex shrink-0 items-center gap-2.5"
+          className="pressable group flex shrink-0 items-center gap-2.5"
           aria-label="OtoApteka.pl — strona główna"
         >
-          <LogoMark className="h-8 drop-shadow-sm" />
+          <LogoMark className="h-8 drop-shadow-sm transition-transform duration-500 [transition-timing-function:var(--ease-spring)] group-hover:-rotate-6 group-hover:scale-110" />
           <Wordmark className="hidden min-[380px]:inline" />
         </Link>
 

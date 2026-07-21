@@ -28,14 +28,20 @@ function Stat({
   Icon,
   value,
   label,
+  iconClass,
 }: {
   Icon: typeof Footprints;
   value: string;
   label: string;
+  iconClass?: string;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="h-5 w-5 shrink-0 text-ink-soft" strokeWidth={1.9} aria-hidden />
+      <Icon
+        className={cn("h-5 w-5 shrink-0 text-ink-soft", iconClass)}
+        strokeWidth={1.9}
+        aria-hidden
+      />
       <div className="leading-tight">
         <div className="font-bold tabular-nums text-ink">{value}</div>
         <div className="text-[11px] text-muted">{label}</div>
@@ -67,7 +73,7 @@ export function PharmacyCard({ pharmacy, index = 0 }: { pharmacy: Card; index?: 
   return (
     <Link
       href={`/apteka/${p.slug}`}
-      className="card-hover animate-card-in group block rounded-2xl border bg-surface p-4 shadow-[var(--shadow-card)] sm:px-5"
+      className="card-hover card-accent animate-card-in group relative block rounded-2xl border bg-surface p-4 shadow-[var(--shadow-card)] sm:px-5"
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
       {/* Na xl karta staje się siatką o stałych kolumnach — wszystkie wiersze listy
@@ -84,12 +90,17 @@ export function PharmacyCard({ pharmacy, index = 0 }: { pharmacy: Card; index?: 
           </div>
         </div>
 
-        <div className="text-2xl font-extrabold tabular-nums tracking-tight text-ink">
+        <div className="text-2xl font-extrabold tabular-nums tracking-tight text-ink transition-colors duration-300 group-hover:text-pharma-dark">
           {formatDistance(p.distanceMeters)}
         </div>
 
-        <Stat Icon={Footprints} value={formatMinutes(p.walkMinutes)} label="pieszo" />
-        <Stat Icon={Car} value={formatMinutes(p.driveMinutes)} label="autem" />
+        <Stat
+          Icon={Footprints}
+          value={formatMinutes(p.walkMinutes)}
+          label="pieszo"
+          iconClass="stat-walk"
+        />
+        <Stat Icon={Car} value={formatMinutes(p.driveMinutes)} label="autem" iconClass="stat-car" />
 
         <div className="min-w-0 leading-tight">
           <span

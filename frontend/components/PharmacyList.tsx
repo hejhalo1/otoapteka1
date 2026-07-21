@@ -200,7 +200,7 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
                 <button
                   key={c.label}
                   onClick={() => applyCoords(c)}
-                  className="pressable rounded-full border bg-bg px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition-colors hover:border-pharma hover:bg-pharma-soft hover:text-pharma-dark"
+                  className="pressable rounded-full border bg-bg px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition-[color,background-color,border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-pharma hover:bg-pharma-soft hover:text-pharma-dark hover:shadow-[0_4px_10px_rgba(39,156,83,0.18)]"
                 >
                   {c.label}
                 </button>

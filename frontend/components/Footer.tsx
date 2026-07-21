@@ -17,15 +17,15 @@ export function Footer() {
               ani przekazywana dalej.
             </p>
           </div>
-          <nav className="grid grid-cols-2 gap-x-10 gap-y-2 font-medium sm:grid-cols-1">
-            <Link href="/mapa" className="transition-colors hover:text-ink">Mapa aptek</Link>
-            <Link href="/ulubione" className="transition-colors hover:text-ink">Ulubione</Link>
-            <Link href="/o-serwisie" className="transition-colors hover:text-ink">O serwisie</Link>
-            <Link href="/regulamin" className="transition-colors hover:text-ink">Regulamin</Link>
-            <Link href="/polityka-prywatnosci" className="transition-colors hover:text-ink">
+          <nav className="grid grid-cols-2 gap-x-10 gap-y-2 font-medium sm:grid-cols-1 sm:justify-items-start">
+            <Link href="/mapa" className="link-underline hover:text-ink">Mapa aptek</Link>
+            <Link href="/ulubione" className="link-underline hover:text-ink">Ulubione</Link>
+            <Link href="/o-serwisie" className="link-underline hover:text-ink">O serwisie</Link>
+            <Link href="/regulamin" className="link-underline hover:text-ink">Regulamin</Link>
+            <Link href="/polityka-prywatnosci" className="link-underline hover:text-ink">
               Polityka prywatności
             </Link>
-            <Link href="/login" className="transition-colors hover:text-ink">Panel apteki</Link>
+            <Link href="/login" className="link-underline hover:text-ink">Panel apteki</Link>
           </nav>
         </div>
         <p className="mt-8 border-t pt-4 text-xs">

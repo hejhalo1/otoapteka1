@@ -35,12 +35,16 @@ export function FavoriteButton({
         }
       }}
       className={cn(
-        "pressable grid h-9 w-9 place-items-center rounded-full border bg-surface text-muted transition-colors",
+        "pressable relative grid h-9 w-9 place-items-center rounded-full border bg-surface text-muted transition-colors",
         "hover:border-danger/40 hover:text-danger",
         fav && "border-danger/30 text-danger",
         className,
       )}
     >
+      {/* Pierścień rozchodzący się przy dodaniu do ulubionych. */}
+      {popping && (
+        <span aria-hidden className="animate-halo absolute inset-0 rounded-full bg-danger/40" />
+      )}
       <Heart
         className={cn("h-4.5 w-4.5 transition-transform", popping && "animate-heart-pop")}
         fill={fav ? "currentColor" : "none"}

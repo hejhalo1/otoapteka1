@@ -9,9 +9,10 @@ interface InteractiveHoverButtonProps
 }
 
 /**
- * Przycisk z „żywym” hoverem: bazowo pełny kolor primary; przy hoverze od lewej
- * rozlewa się ciemniejsza fala, etykieta zjeżdża, a wjeżdża wersja ze strzałką.
- * Adaptacja wzorca interactive-hover-button (shadcn community) do palety otoapteka.
+ * Główne CTA z „żywym” hoverem — wyłącznie transformy GPU, więc idealnie płynne:
+ * - ciemniejsza fala przesuwa się od lewej (scale-x na osi origin-left),
+ * - etykieta roluje się pionowo: domyślna zjeżdża w górę, od dołu wjeżdża
+ *   wersja ze strzałką — jeden kierunek, wspólny timing, zero krzyżowania.
  */
 const InteractiveHoverButton = React.forwardRef<
   HTMLButtonElement,
@@ -21,25 +22,32 @@ const InteractiveHoverButton = React.forwardRef<
     <button
       ref={ref}
       className={cn(
-        "group pressable relative cursor-pointer overflow-hidden rounded-2xl bg-primary p-4 text-center text-lg font-bold text-white shadow-[var(--shadow-card)]",
+        "group pressable relative cursor-pointer overflow-hidden rounded-2xl bg-primary p-4 text-center text-lg font-bold text-white",
+        "shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-[var(--shadow-lift)]",
         "disabled:cursor-default disabled:opacity-60",
         className,
       )}
       {...props}
     >
-      <span className="relative z-20 inline-flex items-center justify-center gap-2.5 transition-all duration-300 group-hover:translate-x-10 group-hover:opacity-0 group-disabled:transition-none">
-        {icon}
-        {text}
-      </span>
-      <div className="absolute inset-0 z-20 flex translate-x-10 items-center justify-center gap-2.5 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 group-disabled:hidden">
-        <span>{text}</span>
-        <ArrowRight className="h-5 w-5" aria-hidden />
-      </div>
-      {/* Fala koloru rozrastająca się z lewej krawędzi. */}
-      <div
+      {/* Fala koloru — czysty transform (scale-x), w pełni płynna. */}
+      <span
         aria-hidden
-        className="absolute left-[8%] top-[45%] z-10 h-2 w-2 scale-100 rounded-full bg-primary-dark transition-all duration-300 group-hover:left-0 group-hover:top-0 group-hover:h-full group-hover:w-full group-hover:scale-[1.8] group-hover:rounded-none group-disabled:hidden"
+        className="absolute inset-0 origin-left scale-x-0 bg-primary-dark transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:scale-x-100 group-disabled:hidden"
       />
+      {/* Pionowa rolka etykiety. */}
+      <span className="relative z-10 block overflow-hidden">
+        <span className="flex items-center justify-center gap-2.5 transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:-translate-y-[115%] group-disabled:transition-none group-disabled:group-hover:translate-y-0">
+          {icon}
+          {text}
+        </span>
+        <span
+          aria-hidden
+          className="absolute inset-0 flex translate-y-[115%] items-center justify-center gap-2.5 transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:translate-y-0 group-disabled:hidden"
+        >
+          {text}
+          <ArrowRight className="h-5 w-5" />
+        </span>
+      </span>
     </button>
   );
 });
