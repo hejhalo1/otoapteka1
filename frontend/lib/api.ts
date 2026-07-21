@@ -42,6 +42,17 @@ export async function fetchPharmacyBySlug(
   return res.json() as Promise<PharmacyDetail>;
 }
 
+// Klient (przeglądarka) — szczegóły apteki, np. lista ulubionych.
+export async function fetchPharmacyBySlugClient(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<PharmacyDetail | null> {
+  const res = await fetch(`${API_URL}/api/pharmacies/${encodeURIComponent(slug)}`, { signal });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
+  return res.json() as Promise<PharmacyDetail>;
+}
+
 // Slugi (sitemap).
 export async function fetchAllSlugs(): Promise<
   Array<{ slug: string; updatedAt: string }>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { CalendarDays, ChevronDown, LocateFixed, MapPinOff, SearchX } from "lucide-react";
 import { fetchPharmacies } from "@/lib/api";
 import {
   CITIES,
@@ -12,6 +12,8 @@ import {
 } from "@/lib/geo";
 import type { PharmacyCard as Card } from "@/lib/types";
 import { PharmacyCard } from "./PharmacyCard";
+import { SegmentedTabs } from "./ui/SegmentedTabs";
+import { cn } from "@/lib/utils";
 
 const PER_PAGE = 20;
 
@@ -23,11 +25,14 @@ function isoOffset(days: number): string {
 
 function CardSkeleton() {
   return (
-    <div className="rounded-2xl border bg-surface p-5 shadow-[var(--shadow-card)]">
-      <div className="skeleton h-6 w-2/3 rounded" />
-      <div className="skeleton mt-2 h-4 w-1/2 rounded" />
-      <div className="skeleton mt-4 h-7 w-40 rounded-full" />
-      <div className="skeleton mt-4 h-6 w-1/3 rounded" />
+    <div className="flex items-center gap-5 rounded-2xl border bg-surface p-4 shadow-[var(--shadow-card)] sm:px-5">
+      <div className="skeleton h-12 w-12 shrink-0 rounded-2xl" />
+      <div className="flex-1">
+        <div className="skeleton h-5 w-1/3 rounded" />
+        <div className="skeleton mt-2 h-4 w-1/2 rounded" />
+      </div>
+      <div className="skeleton hidden h-7 w-20 rounded sm:block" />
+      <div className="skeleton hidden h-8 w-28 rounded-lg md:block" />
     </div>
   );
 }
@@ -47,6 +52,7 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const today = isoOffset(0);
   const tomorrow = isoOffset(1);
@@ -86,7 +92,7 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
     void load(coords, 1, true);
   }, [coords, date, openNow, load]);
 
-  const locate = async () => {
+  const locate = useCallback(async () => {
     setLocating(true);
     setGeoError(null);
     try {
@@ -97,7 +103,16 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
     } finally {
       setLocating(false);
     }
-  };
+  }, []);
+
+  // „Moja lokalizacja” z hero/headera + wejście z flagą ?lokalizuj=1 (inne strony).
+  // locate() w efekcie to inicjalizacja z zewnętrznego systemu (URL) — false-positive.
+  useEffect(() => {
+    window.addEventListener("otoapteka:locate", locate);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (new URLSearchParams(window.location.search).has("lokalizuj")) void locate();
+    return () => window.removeEventListener("otoapteka:locate", locate);
+  }, [locate]);
 
   const loadMore = () => {
     if (!coords || loading) return;
@@ -105,39 +120,81 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
     void load(coords, pageRef.current, false);
   };
 
+  const dayTabs = (
+    <div className="flex flex-wrap items-center gap-2">
+      <SegmentedTabs
+        value={isCustom ? "custom" : date}
+        onChange={(v) => {
+          if (v === "custom") dateInputRef.current?.showPicker?.();
+          else setDate(v);
+        }}
+        options={[
+          { value: today, label: "Dziś" },
+          { value: tomorrow, label: "Jutro" },
+          {
+            value: "custom",
+            label: (
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4" aria-hidden />
+                {isCustom
+                  ? new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" }).format(
+                      new Date(`${date}T12:00:00`),
+                    )
+                  : "Kolejny dzień"}
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            ),
+          },
+        ]}
+      />
+      {/* Ukryty natywny date picker otwierany z taba „Kolejny dzień”. */}
+      <input
+        ref={dateInputRef}
+        type="date"
+        aria-label="Wybierz dzień"
+        min={today}
+        max={isoOffset(30)}
+        value={isCustom ? date : ""}
+        onChange={(e) => e.target.value && setDate(e.target.value)}
+        className="sr-only"
+        tabIndex={-1}
+      />
+    </div>
+  );
+
   // ---- Ekran startowy (bez lokalizacji) ----
   if (!coords) {
     return (
-      <div className="mx-auto max-w-xl">
-        <div className="rounded-3xl border bg-surface p-6 text-center shadow-[var(--shadow-card)] sm:p-8">
-          <button
-            onClick={locate}
-            disabled={locating}
-            className="pressable w-full rounded-2xl bg-teal px-6 py-4 text-lg font-bold text-surface shadow-[var(--shadow-card)] transition-colors hover:bg-teal-dark disabled:opacity-60"
-          >
-            {locating ? "Ustalanie lokalizacji…" : "📍 Znajdź najbliższą aptekę"}
-          </button>
-          <Link
-            href="/mapa"
-            className="pressable mt-3 block w-full rounded-2xl border-2 border-line px-6 py-3.5 font-semibold text-ink hover:border-teal hover:text-teal"
-          >
-            Wybierz na mapie
-          </Link>
+      <div>
+        <h2 className="text-2xl font-extrabold tracking-tight text-ink">
+          Najbliższe czynne apteki
+        </h2>
+        <div className="mt-4 rounded-3xl border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-pharma-soft text-pharma">
+              <LocateFixed className={cn("h-7 w-7", locating && "animate-spin")} aria-hidden />
+            </span>
+            <p className="max-w-md text-ink-soft">
+              {locating
+                ? "Ustalanie Twojej lokalizacji…"
+                : "Udostępnij lokalizację przyciskiem powyżej albo wybierz miasto — pokażemy apteki od najbliższej."}
+            </p>
+          </div>
 
           {geoError && (
-            <p className="mt-4 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
+            <p className="mt-4 rounded-xl bg-danger/10 px-4 py-3 text-center text-sm font-medium text-danger" role="alert">
               {geoError}
             </p>
           )}
 
-          <div className="mt-6 border-t pt-5 text-left">
-            <p className="mb-2 text-sm font-medium text-muted">Albo wybierz miasto:</p>
+          <div className="mt-6 border-t pt-5">
+            <p className="mb-2.5 text-sm font-semibold text-muted">Wybierz miasto:</p>
             <div className="flex flex-wrap gap-2">
               {CITIES.map((c) => (
                 <button
                   key={c.label}
                   onClick={() => setCoords(c)}
-                  className="pressable rounded-full border bg-bg px-3.5 py-1.5 text-sm font-medium text-ink hover:border-teal hover:text-teal"
+                  className="pressable rounded-full border bg-bg px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition-colors hover:border-pharma hover:bg-pharma-soft hover:text-pharma-dark"
                 >
                   {c.label}
                 </button>
@@ -152,85 +209,84 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
   // ---- Lista wyników ----
   return (
     <div className="space-y-4">
-      {/* Pasek kontrolny */}
-      <div className="flex flex-col gap-3 rounded-2xl border bg-surface p-3 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted">Blisko:</span>
-          <span className="font-semibold text-ink">{coords.label ?? "wybrany punkt"}</span>
-          <button onClick={() => setCoords(null)} className="pressable text-teal hover:underline">
-            zmień
-          </button>
+      {/* Nagłówek sekcji + przełącznik dnia (mockup) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-ink">
+            Najbliższe czynne apteki
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">
+            Blisko: <span className="font-semibold text-ink-soft">{coords.label ?? "wybrany punkt"}</span>
+            <button
+              onClick={() => setCoords(null)}
+              className="pressable ml-2 font-semibold text-primary hover:underline"
+            >
+              zmień
+            </button>
+            {total > 0 && (
+              <span key={total} className="animate-num-in ml-2 inline-block">
+                · {total} {total === 1 ? "apteka" : total < 5 ? "apteki" : "aptek"}
+              </span>
+            )}
+          </p>
         </div>
-        <label className="pressable flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
+        {dayTabs}
+      </div>
+
+      {/* Filtr „tylko czynne” — przełącznik */}
+      <label className="inline-flex cursor-pointer select-none items-center gap-2.5 text-sm font-semibold text-ink">
+        <span
+          className={cn(
+            "relative h-6 w-11 rounded-full transition-colors duration-300",
+            openNow ? "bg-pharma" : "bg-line",
+          )}
+        >
           <input
             type="checkbox"
             checked={openNow}
             onChange={(e) => setOpenNow(e.target.checked)}
-            className="h-4 w-4 accent-teal"
+            className="peer sr-only"
           />
-          Tylko otwarte teraz
-        </label>
-      </div>
-
-      {/* Przełącznik dnia */}
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { label: "Dzisiaj", value: today },
-          { label: "Jutro", value: tomorrow },
-        ].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setDate(opt.value)}
-            className={`pressable rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-              date === opt.value ? "bg-ink text-surface" : "border bg-surface text-ink hover:border-teal"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-        <label
-          className={`pressable flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${
-            isCustom ? "bg-ink text-surface" : "border bg-surface text-ink"
-          }`}
-        >
-          Wybierz dzień
-          <input
-            type="date"
-            min={today}
-            max={isoOffset(30)}
-            value={isCustom ? date : ""}
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="bg-transparent text-inherit [color-scheme:light]"
+          <span
+            aria-hidden
+            className={cn(
+              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300 [transition-timing-function:var(--ease-spring)]",
+              openNow ? "left-[22px]" : "left-0.5",
+            )}
           />
-        </label>
-      </div>
+        </span>
+        Tylko czynne apteki
+      </label>
 
       {/* Wyniki */}
       {error ? (
-        <div className="rounded-2xl border bg-surface p-8 text-center">
-          <p className="text-danger">{error}</p>
-          <button onClick={() => coords && load(coords, 1, true)} className="pressable mt-3 rounded-lg bg-teal px-4 py-2 font-semibold text-surface">
+        <div className="rounded-2xl border bg-surface p-8 text-center shadow-[var(--shadow-card)]">
+          <p className="font-medium text-danger">{error}</p>
+          <button
+            onClick={() => coords && load(coords, 1, true)}
+            className="pressable mt-3 rounded-xl bg-primary px-5 py-2.5 font-bold text-white hover:bg-primary-dark"
+          >
             Spróbuj ponownie
           </button>
         </div>
       ) : loading && items.length === 0 ? (
         <div className="grid gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <CardSkeleton key={i} />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border bg-surface p-8 text-center">
-          <p className="text-lg font-semibold text-ink">Brak aptek w promieniu 15 km</p>
+        <div className="rounded-2xl border bg-surface p-10 text-center shadow-[var(--shadow-card)]">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-bg text-muted">
+            {openNow ? <SearchX className="h-7 w-7" /> : <MapPinOff className="h-7 w-7" />}
+          </span>
+          <p className="mt-3 text-lg font-bold text-ink">Brak aptek w promieniu 15 km</p>
           <p className="mt-1 text-muted">
-            Spróbuj innego punktu{openNow ? " lub wyłącz filtr „tylko otwarte”" : ""}.
+            Spróbuj innego punktu{openNow ? " lub wyłącz filtr „tylko czynne”" : ""}.
           </p>
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted">
-            Znaleziono <span className="font-semibold text-ink">{total}</span> aptek
-          </p>
           <div className="grid gap-3">
             {items.map((p, i) => (
               <PharmacyCard key={p.id} pharmacy={p} index={i} />
@@ -240,9 +296,10 @@ export function PharmacyList({ initialCoords }: { initialCoords?: Coords }) {
             <button
               onClick={loadMore}
               disabled={loading}
-              className="pressable mx-auto block rounded-xl border-2 border-line bg-surface px-6 py-3 font-semibold text-ink hover:border-teal hover:text-teal disabled:opacity-60"
+              className="pressable group mx-auto flex items-center gap-2 rounded-full px-6 py-3 font-bold text-ink transition-colors hover:text-pharma disabled:opacity-60"
             >
-              {loading ? "Wczytywanie…" : "Pokaż więcej"}
+              {loading ? "Wczytywanie…" : "Zobacz wszystkie apteki w okolicy"}
+              <ChevronDown className="h-4 w-4 transition-transform duration-300 group-hover:translate-y-0.5" aria-hidden />
             </button>
           )}
         </>

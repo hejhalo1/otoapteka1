@@ -24,7 +24,8 @@ export default function AboutPage() {
           przez Centrum e-Zdrowia i publikowanego na dane.gov.pl. Aktualizujemy je codziennie.
         </li>
         <li>
-          Mapy, geokodowanie adresów i wyznaczanie tras opieramy o ekosystem OpenStreetMap —
+          Współrzędne aptek wyznaczamy z oficjalnej bazy adresowej PRG (usługa geokodowania
+          GUGiK), a mapy i wyznaczanie tras opieramy o ekosystem OpenStreetMap —
           © OpenStreetMap contributors.
         </li>
         <li>
@@ -37,7 +38,7 @@ export default function AboutPage() {
       <p>
         Twoja lokalizacja jest używana wyłącznie po Twoim kliknięciu i nigdy nie jest
         zapisywana ani przekazywana dalej. Szczegóły znajdziesz w{" "}
-        <a href="/polityka-prywatnosci" className="text-teal underline">
+        <a href="/polityka-prywatnosci" className="font-semibold text-primary underline">
           Polityce prywatności
         </a>
         .

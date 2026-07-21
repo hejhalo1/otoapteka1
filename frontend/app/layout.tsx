@@ -33,10 +33,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f2a47",
+  themeColor: "#122c47",
   width: "device-width",
   initialScale: 1,
 };
+
+// Przywraca wybrany rozmiar tekstu (A A A) przed pierwszym paintem — bez FOUC.
+const fontScaleScript = `try{var s=localStorage.getItem("otoapteka:fs");if(s==="lg"||s==="xl")document.documentElement.dataset.fs=s}catch(e){}`;
 
 export default function RootLayout({
   children,
@@ -44,6 +47,7 @@ export default function RootLayout({
   return (
     <html lang="pl" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: fontScaleScript }} />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

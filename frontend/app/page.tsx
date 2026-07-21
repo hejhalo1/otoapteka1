@@ -1,20 +1,57 @@
+import { BadgeCheck, Clock, MapPin, Megaphone } from "lucide-react";
 import { PharmacyList } from "@/components/PharmacyList";
+import { HeroCta } from "@/components/HeroCta";
+import { HeroMap } from "@/components/HeroMap";
+import { Reveal } from "@/components/ui/Reveal";
+
+const FEATURES = [
+  { Icon: BadgeCheck, label: "Tylko czynne apteki" },
+  { Icon: Clock, label: "Aktualne godziny" },
+  { Icon: MapPin, label: "Odległość w metrach" },
+  { Icon: Megaphone, label: "Info z apteki" },
+];
 
 export default function HomePage() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
-      <section className="mb-8 text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-          Najbliższa <span className="text-teal">otwarta apteka</span>
-          <br className="hidden sm:block" /> w kilka sekund
-        </h1>
-        <p className="mx-auto mt-3 max-w-md text-muted">
-          Zobacz dystans, czas dojścia i dojazdu, godziny otwarcia i komunikaty apteki —
-          wszystko na jednej karcie.
-        </p>
+    <div className="mx-auto max-w-6xl px-4">
+      {/* ---- Hero ---- */}
+      <section className="grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-[1.05fr_1fr] lg:gap-12">
+        <div>
+          <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[3.4rem]">
+            Znajdź
+            <br />
+            najbliższą <span className="text-pharma">aptekę</span>
+          </h1>
+          <p className="mt-4 max-w-md text-lg text-ink-soft">
+            Sprawdź, która apteka jest otwarta i&nbsp;jak szybko do niej dotrzesz.
+          </p>
+          <div className="mt-7">
+            <HeroCta />
+          </div>
+        </div>
+        <div className="aspect-[4/3] lg:aspect-auto lg:h-[420px]">
+          <HeroMap />
+        </div>
       </section>
 
-      <PharmacyList />
+      {/* ---- Atuty ---- */}
+      <Reveal>
+        <ul className="flex flex-wrap items-center gap-x-8 gap-y-3 border-y py-4 text-sm font-semibold text-ink-soft">
+          {FEATURES.map(({ Icon, label }) => (
+            <li key={label} className="flex items-center gap-2">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-pharma-soft text-pharma">
+                <Icon className="h-4 w-4" aria-hidden />
+              </span>
+              {label}
+            </li>
+          ))}
+        </ul>
+      </Reveal>
+
+      {/* ---- Lista aptek ---- */}
+      <section id="apteki" className="scroll-mt-20 py-8">
+        <PharmacyList />
+      </section>
     </div>
   );
 }
