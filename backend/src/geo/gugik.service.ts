@@ -10,9 +10,11 @@ proj4.defs(
   '+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
 );
 
-// Typ dopasowania zwracany przez UUG. 'city' to centroid miejscowości — dla apteki
-// bezużyteczny (potrafi być kilka km od celu), więc go odrzucamy.
-const ACCEPTED_TYPES = new Set(['address', 'street']);
+// Typy dopasowania UUG. Przy geokodowaniu APTEKI 'city' to centroid miejscowości —
+// bezużyteczny (potrafi być kilka km od celu). Przy wyszukiwaniu MIEJSCA (input
+// miasto/kod) centroid jest dokładnie tym, czego chcemy.
+const ADDRESS_TYPES = new Set(['address', 'street']);
+const PLACE_TYPES = new Set(['address', 'street', 'city']);
 
 interface UugResult {
   x?: string;
@@ -21,11 +23,19 @@ interface UugResult {
   street?: string;
   number?: string;
   code?: string;
+  jednostka?: string; // "{Polska,województwo,powiat,gmina}" (tekst tablicy PostgreSQL)
 }
 
 interface UugResponse {
   type?: string;
   results?: Record<string, UugResult>;
+}
+
+// Ostatni element `jednostka` to gmina. Miasto ma gminę == swojej nazwie, wieś nie —
+// pozwala odróżnić np. stolicę od 9 wsi o nazwie "Warszawa".
+function gmina(r: UugResult): string {
+  const parts = (r.jednostka ?? '').replace(/[{}]/g, '').split(',');
+  return (parts[parts.length - 1] ?? '').trim().toLowerCase();
 }
 
 /**
@@ -70,10 +80,54 @@ export class GugikService {
   }
 
   /**
-   * Geokoduje adres w formacie UUG ("Miasto, Ulica Numer" lub "Miejscowość Numer").
-   * Zwraca współrzędne WGS84 albo null (brak dopasowania / poza Polską / błąd).
+   * Geokoduje adres apteki w formacie UUG ("Miasto, Ulica Numer"). Odrzuca centroidy
+   * miejscowości. Zwraca współrzędne WGS84 albo null.
    */
   async geocode(query: string): Promise<GeoCoords | null> {
+    const hits = await this.lookup(query, ADDRESS_TYPES);
+    if (!hits?.length) return null;
+    const { lat, lng } = hits[0];
+    return { lat, lng };
+  }
+
+  /**
+   * Wyszukuje MIEJSCE (miasto lub kod pocztowy z inputu użytkownika) — akceptuje też
+   * centroid miejscowości. Zwraca współrzędne + czytelną etykietę.
+   *
+   * `preferCity`: gdy kilka miejscowości ma tę samą nazwę (w PL jest np. 10 wsi
+   * "Warszawa"), wybiera tę, której gmina == nazwie miasta (czyli właściwe miasto,
+   * nie wieś). Bez dopasowania bierze pierwszy wynik z UUG.
+   */
+  async geocodePlace(
+    query: string,
+    preferCity?: string,
+  ): Promise<{ lat: number; lng: number; label: string } | null> {
+    const hits = await this.lookup(query, PLACE_TYPES);
+    if (!hits?.length) return null;
+
+    const target = (preferCity ?? '').trim().toLowerCase();
+    const best =
+      (target && hits.find((h) => gmina(h.r) === target)) ||
+      hits.find(
+        (h) => h.r.city && gmina(h.r) === h.r.city.trim().toLowerCase(),
+      ) ||
+      hits[0];
+
+    const parts = [best.r.street, best.r.number, best.r.city].filter(
+      (p): p is string => Boolean(p && p.trim()),
+    );
+    const label = parts.length ? parts.join(' ').trim() : query.trim();
+    return { lat: best.lat, lng: best.lng, label };
+  }
+
+  /**
+   * Wspólny rdzeń: zapytanie do UUG, walidacja JSON/typu/bbox, transformacja 2180→WGS84.
+   * Zwraca WSZYSTKIE wyniki (do wyboru najlepszego przy niejednoznacznych nazwach).
+   */
+  private async lookup(
+    query: string,
+    acceptedTypes: Set<string>,
+  ): Promise<Array<{ lat: number; lng: number; r: UugResult }> | null> {
     await this.rateLimit();
 
     const url = `${this.baseUrl}/?request=GetAddress&address=${encodeURIComponent(query)}`;
@@ -109,22 +163,20 @@ export class GugikService {
       }
 
       const data = JSON.parse(text) as UugResponse;
-      if (!data.type || !ACCEPTED_TYPES.has(data.type)) return null;
+      if (!data.type || !acceptedTypes.has(data.type)) return null;
 
-      const best = data.results?.['1'];
-      if (!best?.x || !best?.y) return null;
-
-      const x = Number(best.x);
-      const y = Number(best.y);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-
-      const [lng, lat] = proj4('EPSG:2180', 'EPSG:4326', [x, y]);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      if (!this.inPoland(lat, lng)) {
-        this.logger.warn(`Wynik poza Polską (${lat},${lng}) dla: ${query}`);
-        return null;
+      const out: Array<{ lat: number; lng: number; r: UugResult }> = [];
+      for (const r of Object.values(data.results ?? {})) {
+        if (!r?.x || !r?.y) continue;
+        const x = Number(r.x);
+        const y = Number(r.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const [lng, lat] = proj4('EPSG:2180', 'EPSG:4326', [x, y]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        if (!this.inPoland(lat, lng)) continue;
+        out.push({ lat, lng, r });
       }
-      return { lat, lng };
+      return out.length ? out : null;
     } catch (e) {
       this.logger.warn(`Błąd GUGiK "${query}": ${(e as Error).message}`);
       return null;

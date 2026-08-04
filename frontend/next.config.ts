@@ -34,7 +34,21 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "geolocation=(self), camera=(), microphone=()" },
 ];
 
+const api = new URL(apiUrl);
+
 const nextConfig: NextConfig = {
+  // Zdjęcia aptek serwuje backend (uploads po moderacji) — zezwalamy next/image
+  // wyłącznie na hosta API.
+  images: {
+    remotePatterns: [
+      {
+        protocol: api.protocol === "https:" ? "https" : "http",
+        hostname: api.hostname,
+        port: api.port,
+        pathname: "/uploads/**",
+      },
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

@@ -299,6 +299,40 @@ body {
   animation: floaty 5s ease-in-out infinite;
 }
 
+/* Galeria auto-przewijana (marquee) — dwie kopie treści dla płynnej pętli. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee 40s linear infinite;
+  width: max-content;
+}
+.marquee-viewport:hover .marquee-track {
+  animation-play-state: paused;
+}
+/* Miękkie wygaszenie krawędzi galerii. */
+.marquee-fade {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 6%,
+    #000 94%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 6%,
+    #000 94%,
+    transparent
+  );
+}
+
 /* Skeleton shimmer. */
 @keyframes shimmer {
   0% {
@@ -365,6 +399,9 @@ body {
   .link-underline {
     transition: none;
   }
+  .marquee-track {
+    animation: none;
+  }
 }
 
 /* Leaflet: kontener mapy. isolation zamyka wysokie z-indexy paneli Leafleta
@@ -373,4 +410,25 @@ body {
   font-family: var(--font-sans);
   border-radius: var(--radius-lg);
   isolation: isolate;
+}
+
+/* Kontrolki zoomu Leafleta w stylu serwisu (zaokrąglone, miękki cień). */
+.leaflet-control-zoom.leaflet-bar {
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.leaflet-control-zoom.leaflet-bar a {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  color: var(--color-ink-soft);
+  font-weight: 700;
+  border-bottom-color: var(--color-line);
+  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
+}
+.leaflet-control-zoom.leaflet-bar a:hover {
+  background: var(--color-pharma-soft);
+  color: var(--color-pharma-dark);
 }

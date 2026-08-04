@@ -22,7 +22,7 @@ const InteractiveHoverButton = React.forwardRef<
     <button
       ref={ref}
       className={cn(
-        "group pressable relative cursor-pointer overflow-hidden rounded-2xl bg-primary p-4 text-center text-lg font-bold text-white",
+        "group pressable relative cursor-pointer overflow-hidden rounded-2xl bg-pharma p-4 text-center text-lg font-bold text-white",
         "shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-[var(--shadow-lift)]",
         "disabled:cursor-default disabled:opacity-60",
         className,
@@ -32,7 +32,7 @@ const InteractiveHoverButton = React.forwardRef<
       {/* Fala koloru — czysty transform (scale-x), w pełni płynna. */}
       <span
         aria-hidden
-        className="absolute inset-0 origin-left scale-x-0 bg-primary-dark transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:scale-x-100 group-disabled:hidden"
+        className="absolute inset-0 origin-left scale-x-0 bg-pharma-dark transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:scale-x-100 group-disabled:hidden"
       />
       {/* Pionowa rolka etykiety. */}
       <span className="relative z-10 block overflow-hidden">

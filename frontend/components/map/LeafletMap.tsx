@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -19,6 +19,10 @@ export interface MapMarker {
   name: string;
   slug?: string;
   highlight?: boolean;
+  /** Numer na pinie (1..N) — koresponduje z numeracją listy wyników. */
+  index?: number;
+  /** Pin aktywny (hover karty na liście) — większy i ciemniejszy. */
+  active?: boolean;
 }
 
 export interface LeafletMapProps {
@@ -51,6 +55,18 @@ const pickIcon = L.divIcon({
   iconAnchor: [0, 0],
 });
 
+// Numerowany pin — numer koresponduje z pozycją apteki na liście wyników.
+function numberedPin(index: number, active: boolean) {
+  const fill = active ? "#122c47" : "#279c53";
+  const scale = active ? 1.18 : 1;
+  return L.divIcon({
+    className: "",
+    html: `<div style="transform:translate(-50%,-100%) scale(${scale});transform-origin:50% 100%;filter:drop-shadow(0 2px 3px rgba(18,44,71,.35))"><svg width="34" height="42" viewBox="0 0 32 39" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 0C7.2 0 0 7.1 0 15.9 0 26.6 16 39 16 39s16-12.4 16-23.1C32 7.1 24.8 0 16 0z" fill="${fill}"/><text x="16" y="21.5" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="14" font-weight="800" fill="#fff">${index}</text></svg></div>`,
+    iconSize: [34, 42],
+    iconAnchor: [0, 0],
+  });
+}
+
 function ClickHandler({ onPick }: { onPick?: (c: { lat: number; lng: number }) => void }) {
   useMapEvents({
     click(e) {
@@ -60,11 +76,23 @@ function ClickHandler({ onPick }: { onPick?: (c: { lat: number; lng: number }) =
   return null;
 }
 
-function Recenter({ center }: { center: { lat: number; lng: number } }) {
+function Recenter({
+  center,
+  zoom,
+}: {
+  center: { lat: number; lng: number };
+  zoom?: number;
+}) {
   const map = useMap();
+  const prevZoom = useRef(zoom);
   useEffect(() => {
-    map.setView([center.lat, center.lng]);
-  }, [center.lat, center.lng, map]);
+    // Celowy SPADEK propa zoom (np. powrót do widoku Polski po „zmień”) stosujemy wprost;
+    // w pozostałych wypadkach dociągamy zoom tylko w górę — nie cofamy przybliżenia usera.
+    const reset = zoom != null && prevZoom.current != null && zoom < prevZoom.current;
+    prevZoom.current = zoom;
+    const target = zoom && (reset || map.getZoom() < zoom) ? zoom : map.getZoom();
+    map.setView([center.lat, center.lng], target);
+  }, [center.lat, center.lng, zoom, map]);
   return null;
 }
 
@@ -88,7 +116,7 @@ export default function LeafletMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         maxZoom={19}
       />
-      <Recenter center={center} />
+      <Recenter center={center} zoom={zoom} />
       {onPick && <ClickHandler onPick={onPick} />}
 
       {pickMarker && <Marker position={[pickMarker.lat, pickMarker.lng]} icon={pickIcon} />}
@@ -97,7 +125,12 @@ export default function LeafletMap({
         <Marker
           key={m.slug ?? `${m.lat}-${m.lng}-${i}`}
           position={[m.lat, m.lng]}
-          icon={pin(m.highlight ? "#122c47" : "#279c53")}
+          zIndexOffset={m.active ? 1000 : 0}
+          icon={
+            m.index != null
+              ? numberedPin(m.index, m.active === true)
+              : pin(m.highlight ? "#122c47" : "#279c53")
+          }
         >
           <Popup>
             <div className="min-w-40">

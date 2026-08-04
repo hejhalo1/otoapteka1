@@ -270,6 +270,25 @@ model Photo {
 }
 
 // =========================================================================
+// GALERIA PROMOCYJNA (strona główna, zarządzana z panelu admina)
+// =========================================================================
+
+// Slajd auto-przewijanej galerii w pustym stanie strony głównej (przed lokalizacją).
+// Obraz przechodzi przez ten sam pipeline co zdjęcia aptek (sharp→WebP, strip EXIF).
+model PromoSlide {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  title     String?
+  subtitle  String?
+  href      String? // opcjonalny link po kliknięciu slajdu
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([active, sortOrder])
+}
+
+// =========================================================================
 // UŻYTKOWNICY / AUTH
 // =========================================================================
 

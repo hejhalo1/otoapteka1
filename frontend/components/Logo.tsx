@@ -34,7 +34,7 @@ export function LogoMark({ className }: { className?: string }) {
 export function Wordmark({ className }: { className?: string }) {
   return (
     <span className={cn("text-xl font-extrabold tracking-tight text-ink", className)}>
-      Oto<span className="text-pharma">Apteka</span>
+      oto<span className="text-pharma">apteka</span>
       <span className="text-muted">.pl</span>
     </span>
   );

@@ -6,6 +6,11 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+/** Zasoby serwowane przez backend (np. /uploads/...) → pełny URL. */
+export function assetUrl(path: string): string {
+  return path.startsWith("http") ? path : `${API_URL}${path}`;
+}
+
 function buildQuery(params: SearchParams): string {
   const q = new URLSearchParams();
   q.set("lat", String(params.lat));
@@ -16,6 +21,40 @@ function buildQuery(params: SearchParams): string {
   if (params.page) q.set("page", String(params.page));
   if (params.perPage) q.set("perPage", String(params.perPage));
   return q.toString();
+}
+
+export interface GeocodedPlace {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+// Klient — geokodowanie miasta (+ opcjonalny kod pocztowy). null gdy nie znaleziono.
+export async function geocodePlace(
+  city: string,
+  postal?: string,
+  signal?: AbortSignal,
+): Promise<GeocodedPlace | null> {
+  const q = new URLSearchParams({ city });
+  if (postal) q.set("postal", postal);
+  const res = await fetch(`${API_URL}/api/geo/geocode?${q.toString()}`, { signal });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Błąd geokodowania: ${res.status}`);
+  return res.json() as Promise<GeocodedPlace>;
+}
+
+// Klient — aktywne slajdy galerii promocyjnej.
+export interface PromoSlide {
+  id: string;
+  imageUrl: string;
+  title: string | null;
+  subtitle: string | null;
+  href: string | null;
+}
+export async function fetchPromoSlides(signal?: AbortSignal): Promise<PromoSlide[]> {
+  const res = await fetch(`${API_URL}/api/promo-slides`, { signal });
+  if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
+  return res.json() as Promise<PromoSlide[]>;
 }
 
 // Klient (przeglądarka) — lista aptek.

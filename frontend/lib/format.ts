@@ -1,9 +1,10 @@
 import type { OpenState, OpenStatus } from "./types";
 
-// Dystans: < 1 km w metrach, dalej w km.
+// Dystans: < 1 km w metrach, dalej w km. Separator dziesiętny po polsku (przecinek).
 export function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0)} km`;
+  const km = (meters / 1000).toFixed(meters < 10000 ? 1 : 0);
+  return `${km.replace(".", ",")} km`;
 }
 
 export function formatMinutes(min: number): string {

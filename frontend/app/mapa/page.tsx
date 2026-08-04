@@ -68,7 +68,7 @@ export default function MapaPage() {
         <h1 className="text-2xl font-extrabold tracking-tight text-ink">Mapa aptek</h1>
         <button
           onClick={useMyLocation}
-          className="pressable inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-dark"
+          className="pressable inline-flex items-center gap-2 rounded-xl bg-pharma px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-pharma-dark"
         >
           <LocateFixed className="h-4 w-4" aria-hidden /> Moja lokalizacja
         </button>

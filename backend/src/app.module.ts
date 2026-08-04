@@ -13,6 +13,7 @@ import { GeoModule } from './geo/geo.module';
 import { PanelModule } from './panel/panel.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PromoModule } from './promo/promo.module';
 import { SyncModule } from './sync/sync.module';
 
 @Module({
@@ -38,6 +39,7 @@ import { SyncModule } from './sync/sync.module';
     PharmaciesModule,
     PanelModule,
     AdminModule,
+    PromoModule,
   ],
   controllers: [AppController],
   providers: [

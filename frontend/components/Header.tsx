@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogoMark, Wordmark } from "./Logo";
-import { NavLinks, LocateButton } from "./NavLinks";
+import { NavLinks, HeaderActions } from "./NavLinks";
 import { FontScale } from "./FontScale";
 
 export function Header() {
@@ -10,7 +10,7 @@ export function Header() {
         <Link
           href="/"
           className="pressable group flex shrink-0 items-center gap-2.5"
-          aria-label="OtoApteka.pl — strona główna"
+          aria-label="otoapteka.pl — strona główna"
         >
           <LogoMark className="h-8 drop-shadow-sm transition-transform duration-500 [transition-timing-function:var(--ease-spring)] group-hover:-rotate-6 group-hover:scale-110" />
           <Wordmark className="hidden min-[380px]:inline" />
@@ -20,7 +20,7 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <FontScale />
-          <LocateButton />
+          <HeaderActions />
         </div>
       </div>
     </header>

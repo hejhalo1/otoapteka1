@@ -27,6 +27,7 @@ export interface PharmacyCard {
   distanceMeters: number;
   walkMinutes: number;
   driveMinutes: number;
+  photoUrl: string | null;
   openStatus: OpenStatus;
   hoursForDate: DayHours[];
   latestAnnouncement: { title: string; type: string; publishedAt: string | null } | null;

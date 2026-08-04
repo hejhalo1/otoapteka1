@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, bootstrapMe, logout } from "@/lib/panel-api";
 import { ANNOUNCEMENT_LABELS } from "@/lib/format";
+import { PromoManager } from "@/components/admin/PromoManager";
 
 interface Stats {
   pharmacies: number;
@@ -156,6 +157,9 @@ export default function AdminPage() {
           ))
         )}
       </Section>
+
+      {/* Galeria strony głównej */}
+      <PromoManager />
 
       {/* Sync */}
       <Section
