@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# stare assety (lokalny „śmietnik", nie wersjonujemy)
+public/stare/
+public/stare2/
+public/tlo13.jpg
