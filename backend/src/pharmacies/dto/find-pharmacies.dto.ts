@@ -8,6 +8,7 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -60,4 +61,17 @@ export class FindPharmaciesDto {
   @IsString()
   @Matches(/^\d{2}:\d{2}$/, { message: 'openAt musi być w formacie HH:MM' })
   openAt?: string;
+
+  // Filtr strony miasta: dokładna nazwa miejscowości (np. „Brodnica”). Wtedy
+  // wyniki są ograniczone do tego miasta i sortowane wg odległości od lat/lng.
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  city?: string;
+
+  // Filtr województwa (parami z `city`, na wypadek zbieżnych nazw miast).
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  voivodeship?: string;
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
 import { FindPharmaciesDto } from './dto/find-pharmacies.dto';
 import { PharmaciesService } from './pharmacies.service';
 
@@ -16,6 +16,32 @@ export class PharmaciesController {
   @Get('slugs')
   getSlugs() {
     return this.pharmacies.getAllSlugs();
+  }
+
+  // Katalog miast (strony SEO). Wszystkie PRZED :slug, by nie zostały złapane.
+  @Get('cities')
+  listCities() {
+    return this.pharmacies.listCities();
+  }
+
+  // GET /api/pharmacies/cities/resolve?q=warszawa — dopasowanie wpisanej nazwy.
+  @Get('cities/resolve')
+  resolveCity(@Query('q') q?: string) {
+    return q ? this.pharmacies.resolveCity(q) : null;
+  }
+
+  // GET /api/pharmacies/cities/:voivodeship/:city — pojedyncze miasto (centroid+liczność).
+  @Get('cities/:voivodeship/:city')
+  async findCity(@Param('voivodeship') woj: string, @Param('city') city: string) {
+    const hit = await this.pharmacies.findCity(woj, city);
+    if (!hit) throw new NotFoundException('Nie znaleziono miasta');
+    return hit;
+  }
+
+  // GET /api/pharmacies/count — liczba aptek w bazie (statystyka). PRZED :slug.
+  @Get('count')
+  count() {
+    return this.pharmacies.countActive();
   }
 
   // GET /api/pharmacies/:slug?date=YYYY-MM-DD

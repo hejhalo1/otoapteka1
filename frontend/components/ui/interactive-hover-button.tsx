@@ -9,10 +9,11 @@ interface InteractiveHoverButtonProps
 }
 
 /**
- * Główne CTA z „żywym” hoverem — wyłącznie transformy GPU, więc idealnie płynne:
- * - ciemniejsza fala przesuwa się od lewej (scale-x na osi origin-left),
- * - etykieta roluje się pionowo: domyślna zjeżdża w górę, od dołu wjeżdża
- *   wersja ze strzałką — jeden kierunek, wspólny timing, zero krzyżowania.
+ * Główne CTA z „żywym” hoverem — wyłącznie transformy GPU, więc idealnie płynne.
+ * Wszystko płynie w JEDNYM kierunku, z lewej na prawą, wspólnym timingiem:
+ * - ciemniejsza fala koloru wjeżdża od lewej (scale-x, origin-left),
+ * - domyślna etykieta wyjeżdża w prawo, a od lewej wjeżdża wersja ze strzałką.
+ * Brak mieszania osi (poziom vs pion) → ruch jest spójny i „zgrany”.
  */
 const InteractiveHoverButton = React.forwardRef<
   HTMLButtonElement,
@@ -29,20 +30,20 @@ const InteractiveHoverButton = React.forwardRef<
       )}
       {...props}
     >
-      {/* Fala koloru — czysty transform (scale-x), w pełni płynna. */}
+      {/* Fala koloru — czysty transform (scale-x), wjeżdża od lewej. */}
       <span
         aria-hidden
         className="absolute inset-0 origin-left scale-x-0 bg-pharma-dark transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:scale-x-100 group-disabled:hidden"
       />
-      {/* Pionowa rolka etykiety. */}
+      {/* Rolka etykiety w poziomie — ten sam kierunek i timing co fala. */}
       <span className="relative z-10 block overflow-hidden">
-        <span className="flex items-center justify-center gap-2.5 transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:-translate-y-[115%] group-disabled:transition-none group-disabled:group-hover:translate-y-0">
+        <span className="flex items-center justify-center gap-2.5 transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:translate-x-[130%] group-disabled:translate-x-0 group-disabled:transition-none">
           {icon}
           {text}
         </span>
         <span
           aria-hidden
-          className="absolute inset-0 flex translate-y-[115%] items-center justify-center gap-2.5 transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:translate-y-0 group-disabled:hidden"
+          className="absolute inset-0 flex -translate-x-[130%] items-center justify-center gap-2.5 transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:translate-x-0 group-disabled:hidden"
         >
           {text}
           <ArrowRight className="h-5 w-5" />

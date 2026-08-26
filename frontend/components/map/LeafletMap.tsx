@@ -57,7 +57,7 @@ const pickIcon = L.divIcon({
 
 // Numerowany pin — numer koresponduje z pozycją apteki na liście wyników.
 function numberedPin(index: number, active: boolean) {
-  const fill = active ? "#122c47" : "#279c53";
+  const fill = active ? "#122c47" : "#0b4f9e";
   const scale = active ? 1.18 : 1;
   return L.divIcon({
     className: "",
@@ -129,7 +129,7 @@ export default function LeafletMap({
           icon={
             m.index != null
               ? numberedPin(m.index, m.active === true)
-              : pin(m.highlight ? "#122c47" : "#279c53")
+              : pin(m.highlight ? "#122c47" : "#0b4f9e")
           }
         >
           <Popup>

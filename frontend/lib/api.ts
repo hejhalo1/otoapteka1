@@ -1,4 +1,5 @@
 import type {
+  City,
   PharmacyDetail,
   PharmacyListResponse,
   SearchParams,
@@ -20,6 +21,8 @@ function buildQuery(params: SearchParams): string {
   if (params.openNow) q.set("openNow", "true");
   if (params.page) q.set("page", String(params.page));
   if (params.perPage) q.set("perPage", String(params.perPage));
+  if (params.city) q.set("city", params.city);
+  if (params.voivodeship) q.set("voivodeship", params.voivodeship);
   return q.toString();
 }
 
@@ -57,6 +60,14 @@ export async function fetchPromoSlides(signal?: AbortSignal): Promise<PromoSlide
   return res.json() as Promise<PromoSlide[]>;
 }
 
+// Klient — liczba aptek w bazie (statystyka na stronie głównej).
+export async function fetchPharmacyCount(signal?: AbortSignal): Promise<number> {
+  const res = await fetch(`${API_URL}/api/pharmacies/count`, { signal });
+  if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
+  const data = (await res.json()) as { total: number };
+  return data.total;
+}
+
 // Klient (przeglądarka) — lista aptek.
 export async function fetchPharmacies(
   params: SearchParams,
@@ -90,6 +101,55 @@ export async function fetchPharmacyBySlugClient(
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
   return res.json() as Promise<PharmacyDetail>;
+}
+
+// ── Katalog miast (strony SEO /apteki) ───────────────────────────────────────
+
+// Server Component (ISR) — wszystkie miasta z aptekami (do indeksu + sitemapy).
+export async function fetchCities(): Promise<City[]> {
+  const res = await fetch(`${API_URL}/api/pharmacies/cities`, {
+    next: { revalidate: 3600, tags: ["cities"] },
+  });
+  if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
+  return res.json() as Promise<City[]>;
+}
+
+// Server Component (ISR) — pojedyncze miasto po slugach; null gdy nie istnieje.
+export async function fetchCity(
+  voivodeshipSlug: string,
+  citySlug: string,
+): Promise<City | null> {
+  const res = await fetch(
+    `${API_URL}/api/pharmacies/cities/${encodeURIComponent(voivodeshipSlug)}/${encodeURIComponent(citySlug)}`,
+    { next: { revalidate: 3600, tags: ["cities"] } },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
+  return res.json() as Promise<City>;
+}
+
+// Server Component (ISR) — lista aptek (dane początkowe strony miasta).
+export async function fetchPharmaciesServer(
+  params: SearchParams,
+): Promise<PharmacyListResponse> {
+  const res = await fetch(`${API_URL}/api/pharmacies?${buildQuery(params)}`, {
+    next: { revalidate: 900 },
+  });
+  if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
+  return res.json() as Promise<PharmacyListResponse>;
+}
+
+// Klient — dopasowanie wpisanej nazwy do strony miasta (null gdy brak).
+export async function resolveCityClient(
+  q: string,
+  signal?: AbortSignal,
+): Promise<City | null> {
+  const res = await fetch(
+    `${API_URL}/api/pharmacies/cities/resolve?q=${encodeURIComponent(q)}`,
+    { signal },
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as City | null;
 }
 
 // Slugi (sitemap).

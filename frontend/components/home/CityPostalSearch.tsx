@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, MapPin, Search } from "lucide-react";
-import { geocodePlace } from "@/lib/api";
+import { geocodePlace, resolveCityClient } from "@/lib/api";
 import type { Coords } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
 /**
- * Wyszukiwanie po mieście (+ opcjonalny kod pocztowy). Geokoduje przez backend
- * (GUGiK) i podnosi wynik do rodzica jako punkt odniesienia listy.
+ * Wyszukiwanie po mieście. Geokoduje przez backend (GUGiK) i podnosi wynik do
+ * rodzica jako punkt odniesienia listy. (Kod pocztowy usunięty — samo miasto,
+ * szerokie pole na wpisanie.)
  */
 export function CityPostalSearch({ onResolved }: { onResolved: (c: Coords) => void }) {
+  const router = useRouter();
   const [city, setCity] = useState("");
-  const [postal, setPostal] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +28,14 @@ export function CityPostalSearch({ onResolved }: { onResolved: (c: Coords) => vo
     setLoading(true);
     setError(null);
     try {
-      const hit = await geocodePlace(c, postal.trim() || undefined);
+      // Najpierw: czy mamy dedykowaną stronę miasta? Jeśli tak — przejdź na nią.
+      const match = await resolveCityClient(c);
+      if (match) {
+        router.push(`/apteki/${match.voivodeshipSlug}/${match.citySlug}`);
+        return;
+      }
+      // W przeciwnym razie geokoduj i pokaż wyniki na miejscu (jak dotąd).
+      const hit = await geocodePlace(c);
       if (!hit) {
         setError("Nie znaleziono takiej miejscowości. Sprawdź pisownię.");
         return;
@@ -57,20 +66,6 @@ export function CityPostalSearch({ onResolved }: { onResolved: (c: Coords) => vo
             className="w-full rounded-2xl border bg-surface py-3 pl-10 pr-3 font-medium text-ink shadow-[var(--shadow-card)] outline-none transition-colors placeholder:text-muted/80 focus:border-pharma"
           />
         </div>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={postal}
-          onChange={(e) => {
-            // Autoformat NN-NNN.
-            const digits = e.target.value.replace(/\D/g, "").slice(0, 5);
-            setPostal(digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits);
-          }}
-          placeholder="Kod (opcjonalnie)"
-          aria-label="Kod pocztowy"
-          autoComplete="postal-code"
-          className="w-full rounded-2xl border bg-surface px-3 py-3 font-medium text-ink shadow-[var(--shadow-card)] outline-none transition-colors placeholder:text-muted/80 focus:border-pharma sm:w-40"
-        />
         <button
           type="submit"
           disabled={loading}
@@ -83,7 +78,7 @@ export function CityPostalSearch({ onResolved }: { onResolved: (c: Coords) => vo
           ) : (
             <Search className="h-5 w-5" aria-hidden />
           )}
-          <span className="sm:hidden lg:inline">Szukaj</span>
+          <span>Szukaj</span>
         </button>
       </div>
       {error && (

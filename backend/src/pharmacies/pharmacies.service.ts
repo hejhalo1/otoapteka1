@@ -52,6 +52,10 @@ export interface PharmacyCard {
   distanceMeters: number;
   walkMinutes: number;
   driveMinutes: number;
+  /** Apteka pełni dyżury (ma zmiany dyżurowe w najbliższym oknie). */
+  hasDuty: boolean;
+  /** Najbliższy/aktualny dyżur (do sekcji „Dyżur" na karcie). null = brak w bazie. */
+  duty: { startsAt: string; endsAt: string } | null;
   openStatus: OpenStatus;
   hoursForDate: DayHours[];
   latestAnnouncement: {
@@ -70,6 +74,27 @@ export interface PharmacyListResponse {
     hasMore: boolean;
   };
   meta: { referenceTime: string; date: string };
+}
+
+export interface CityEntry {
+  voivodeship: string;
+  voivodeshipSlug: string;
+  city: string;
+  citySlug: string;
+  count: number;
+  lat: number;
+  lng: number;
+}
+
+// Slug URL-owy z polskiej nazwy. MUSI być zgodny z frontendem (lib/slug.ts).
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // diakrytyki: ą→a, ć→c, ó→o, ...
+    .replace(/ł/g, 'l') // ł (nie rozkłada się w NFD)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 const MAX_OPENNOW_CANDIDATES = 200;
@@ -141,6 +166,9 @@ export class PharmaciesService {
     const refDow = this.dayOfWeek(referenceTime);
     const radiusMeters = dto.radiusKm * 1000;
     const { lat, lng } = dto;
+    // Filtry strony miasta (null = brak filtra).
+    const cityFilter = dto.city ?? null;
+    const wojFilter = dto.voivodeship ?? null;
 
     // Przy filtrze openNow bierzemy większy zbiór kandydatów i filtrujemy/paginujemy w pamięci
     // (status otwarcia liczy się w strefie czasowej, nie w SQL).
@@ -158,6 +186,8 @@ export class PharmaciesService {
         AND location IS NOT NULL
         AND status = 'AKTYWNA'
         AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography, ${radiusMeters})
+        AND (${cityFilter}::text IS NULL OR city = ${cityFilter})
+        AND (${wojFilter}::text IS NULL OR voivodeship = ${wojFilter})
       ORDER BY "distanceMeters" ASC
       LIMIT ${fetchLimit} OFFSET ${fetchOffset}`;
 
@@ -171,6 +201,9 @@ export class PharmaciesService {
       const duties = dutiesByPharmacy.get(r.id) ?? [];
       const openStatus = computeOpenStatus(segments, duties, referenceTime);
       const ann = announcementByPharmacy.get(r.id) ?? null;
+      const nextDuty = duties
+        .filter((d) => d.endsAt.getTime() >= referenceTime.getTime())
+        .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
       return {
         id: r.id,
         slug: r.slug,
@@ -187,6 +220,10 @@ export class PharmaciesService {
         distanceMeters: Math.round(r.distanceMeters),
         walkMinutes: 0,
         driveMinutes: 0,
+        hasDuty: duties.length > 0,
+        duty: nextDuty
+          ? { startsAt: nextDuty.startsAt.toISOString(), endsAt: nextDuty.endsAt.toISOString() }
+          : null,
         openStatus,
         hoursForDate: this.hoursForDay(segments, refDow),
         latestAnnouncement: ann,
@@ -260,11 +297,7 @@ export class PharmaciesService {
       { title: string; type: string; publishedAt: string | null }
     >();
     if (ids.length === 0)
-      return [
-        hoursByPharmacy,
-        dutiesByPharmacy,
-        announcementByPharmacy,
-      ] as const;
+      return [hoursByPharmacy, dutiesByPharmacy, announcementByPharmacy] as const;
 
     const windowStart = new Date(referenceTime.getTime() - 86_400_000);
     const windowEnd = new Date(referenceTime.getTime() + 7 * 86_400_000);
@@ -431,5 +464,63 @@ export class PharmaciesService {
       slug: r.slug,
       updatedAt: r.updatedAt.toISOString(),
     }));
+  }
+
+  /** Liczba aptek aktualnie w rejestrze — statystyka na stronie głównej. */
+  async countActive(): Promise<{ total: number }> {
+    const total = await this.prisma.pharmacy.count({
+      where: { removedFromRegistryAt: null },
+    });
+    return { total };
+  }
+
+  // ── Katalog miast (strony SEO /apteki/[woj]/[miasto]) ────────────────────────
+  private citiesCache: { at: number; data: CityEntry[] } | null = null;
+
+  /** Wszystkie miejscowości z aptekami: centroid + liczność. Cache 1h (rzadko się zmienia). */
+  async listCities(): Promise<CityEntry[]> {
+    if (this.citiesCache && Date.now() - this.citiesCache.at < 3_600_000) {
+      return this.citiesCache.data;
+    }
+    const rows = await this.prisma.$queryRaw<
+      Array<{ voivodeship: string; city: string; count: number; lat: number; lng: number }>
+    >`
+      SELECT voivodeship, city, count(*)::int AS count,
+             avg(lat)::float8 AS lat, avg(lng)::float8 AS lng
+      FROM "Pharmacy"
+      WHERE "removedFromRegistryAt" IS NULL
+        AND status = 'AKTYWNA'
+        AND lat IS NOT NULL AND lng IS NOT NULL
+        AND city <> '' AND voivodeship <> ''
+      GROUP BY voivodeship, city
+      ORDER BY voivodeship ASC, count DESC`;
+    const data: CityEntry[] = rows.map((r) => ({
+      voivodeship: r.voivodeship,
+      voivodeshipSlug: slugify(r.voivodeship),
+      city: r.city,
+      citySlug: slugify(r.city),
+      count: Number(r.count),
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+    }));
+    this.citiesCache = { at: Date.now(), data };
+    return data;
+  }
+
+  /** Miasto po slugach (woj + miasto). Slug województwa rozstrzyga zbieżne nazwy. */
+  async findCity(voivodeshipSlug: string, citySlug: string): Promise<CityEntry | null> {
+    const cities = await this.listCities();
+    return (
+      cities.find((c) => c.voivodeshipSlug === voivodeshipSlug && c.citySlug === citySlug) ?? null
+    );
+  }
+
+  /** Dopasowanie wpisanej nazwy do miasta (przy zbieżnych — największe wg liczby aptek). */
+  async resolveCity(query: string): Promise<CityEntry | null> {
+    const slug = slugify(query);
+    if (!slug) return null;
+    const matches = (await this.listCities()).filter((c) => c.citySlug === slug);
+    if (matches.length === 0) return null;
+    return matches.reduce((best, c) => (c.count > best.count ? c : best));
   }
 }

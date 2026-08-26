@@ -2,18 +2,18 @@
 
 /* ============================================================================
    Design tokens otoapteka — „apteczny premium”.
-   Kierunek: granat (tekst/nawigacja) + zieleń apteczna (krzyże, piny, godziny)
-   + stonowany niebieski (główne CTA). Dużo światła, zaokrąglenia 12–20px,
-   miękkie cienie, animacje 200–500ms na custom easing.
+   Kierunek: granat (tekst/nawigacja) + rządowy niebieski (krzyże, piny, akcenty,
+   główne CTA). Dużo światła, zaokrąglenia 12–20px, miękkie cienie, animacje
+   200–500ms na custom easing.
    ========================================================================== */
 @theme {
   --color-ink: #122c47; /* granat — nagłówki, tekst, nav */
   --color-ink-soft: #3b5470;
-  --color-primary: #2b539e; /* niebieski — główne CTA (mockup) */
-  --color-primary-dark: #223f7a;
-  --color-pharma: #279c53; /* zieleń apteczna — krzyże, piny, godziny */
-  --color-pharma-dark: #1e7f42;
-  --color-pharma-soft: #e7f5ec; /* tło chipów zielonych */
+  --color-primary: #0b4f9e; /* rządowy niebieski — główny akcent/CTA */
+  --color-primary-dark: #083a72;
+  --color-pharma: #0b4f9e; /* rządowy niebieski — krzyże, piny, akcenty (dawniej zieleń) */
+  --color-pharma-dark: #083a72;
+  --color-pharma-soft: #e8eff9; /* tło chipów/akcentów — jasny niebieski */
   --color-open: #16a34a; /* status: otwarte */
   --color-warn: #ea580c; /* status: zamyka się wkrótce */
   --color-danger: #dc2626; /* status: zamknięte */
@@ -89,6 +89,18 @@ body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Ukryty główny scrollbar strony (przewijanie działa dalej). Wewnętrzne
+   kontenery zachowują smukłe scrollbary z reguł powyżej. */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* stary Edge */
+}
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* WebKit */
 }
 
 ::selection {
@@ -299,40 +311,6 @@ body {
   animation: floaty 5s ease-in-out infinite;
 }
 
-/* Galeria auto-przewijana (marquee) — dwie kopie treści dla płynnej pętli. */
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-.marquee-track {
-  animation: marquee 40s linear infinite;
-  width: max-content;
-}
-.marquee-viewport:hover .marquee-track {
-  animation-play-state: paused;
-}
-/* Miękkie wygaszenie krawędzi galerii. */
-.marquee-fade {
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 6%,
-    #000 94%,
-    transparent
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    #000 6%,
-    #000 94%,
-    transparent
-  );
-}
-
 /* Skeleton shimmer. */
 @keyframes shimmer {
   0% {
@@ -399,9 +377,6 @@ body {
   .link-underline {
     transition: none;
   }
-  .marquee-track {
-    animation: none;
-  }
 }
 
 /* Leaflet: kontener mapy. isolation zamyka wysokie z-indexy paneli Leafleta
@@ -410,6 +385,11 @@ body {
   font-family: var(--font-sans);
   border-radius: var(--radius-lg);
   isolation: isolate;
+}
+
+/* Mapa w trybie wskazywania punktu — krzyżyk sygnalizuje „kliknij, aby wybrać”. */
+.map-pickable .leaflet-grab {
+  cursor: crosshair;
 }
 
 /* Kontrolki zoomu Leafleta w stylu serwisu (zaokrąglone, miękki cień). */

@@ -2,45 +2,42 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, Info, Map as MapIcon, Search, Store, UserRound } from "lucide-react";
+import { Building2, Heart, Info, Map as MapIcon, Search } from "lucide-react";
 import { useFavorites } from "@/lib/favorites";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
-  { href: "/", label: "Znajdź aptekę", Icon: Search },
-  { href: "/mapa", label: "Mapa", Icon: MapIcon },
-  { href: "/login", label: "Dla aptek", Icon: Store },
-  { href: "/o-serwisie", label: "O serwisie", Icon: Info },
+const NAV_ITEMS = [
+  { name: "Strona główna", url: "/", icon: Search },
+  { name: "Apteki wg miast", url: "/apteki", icon: Building2 },
+  { name: "Mapa", url: "/mapa", icon: MapIcon },
+  { name: "O serwisie", url: "/o-serwisie", icon: Info },
 ];
 
+/**
+ * Nawigacja: zwykłe przyciski (bez pigułki/układu). Aktywna podstrona → niebieskie
+ * tło + biały napis; hover na inną → lekkie jasnoniebieskie tło; domyślnie białe tło.
+ */
 export function NavLinks() {
   const pathname = usePathname();
   return (
-    <nav className="flex items-center gap-0.5 text-sm font-semibold sm:gap-1">
-      {LINKS.map(({ href, label, Icon }) => {
-        const active = pathname === href;
+    <nav className="flex items-center gap-1 text-sm font-semibold sm:gap-1.5">
+      {NAV_ITEMS.map((item) => {
+        const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+        const Icon = item.icon;
         return (
           <Link
-            key={href}
-            href={href}
+            key={item.url}
+            href={item.url}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "pressable group relative rounded-lg px-2.5 py-2 text-ink-soft transition-colors hover:text-ink sm:px-3",
-              active && "text-ink",
+              "pressable flex items-center gap-1.5 rounded-lg px-2.5 py-2 transition-colors sm:px-3",
+              active
+                ? "bg-pharma text-white"
+                : "bg-white text-ink-soft hover:bg-pharma-soft hover:text-pharma-dark",
             )}
           >
-            <span className="flex items-center gap-1.5">
-              <Icon className="h-4 w-4 sm:hidden" aria-hidden />
-              <span className="hidden sm:inline">{label}</span>
-            </span>
-            {/* Animowane podkreślenie — rośnie od środka. */}
-            <span
-              aria-hidden
-              className={cn(
-                "absolute inset-x-2.5 -bottom-0.5 h-0.5 origin-center scale-x-0 rounded-full bg-pharma transition-transform duration-300 [transition-timing-function:var(--ease-out)] group-hover:scale-x-100",
-                active && "scale-x-100",
-              )}
-            />
+            <Icon className="h-4 w-4 sm:hidden" aria-hidden />
+            <span className="hidden sm:inline">{item.name}</span>
           </Link>
         );
       })}
@@ -68,14 +65,6 @@ export function HeaderActions() {
             {favorites.length > 9 ? "9+" : favorites.length}
           </span>
         )}
-      </Link>
-      <Link
-        href="/login"
-        aria-label="Konto apteki — logowanie"
-        title="Konto apteki"
-        className="pressable grid h-10 w-10 place-items-center rounded-full text-ink-soft transition-colors hover:bg-pharma-soft hover:text-pharma-dark"
-      >
-        <UserRound className="h-5 w-5" aria-hidden />
       </Link>
     </div>
   );

@@ -9,5 +9,6 @@ import { ImageService } from './image.service';
   imports: [AuthModule],
   controllers: [PanelController],
   providers: [PanelService, ImageService],
+  exports: [PanelService],
 })
 export class PanelModule {}

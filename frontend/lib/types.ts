@@ -27,6 +27,10 @@ export interface PharmacyCard {
   distanceMeters: number;
   walkMinutes: number;
   driveMinutes: number;
+  /** Apteka pełni dyżury (ma zmiany dyżurowe w najbliższym oknie). */
+  hasDuty: boolean;
+  /** Najbliższy/aktualny dyżur do sekcji „Dyżur" na karcie. null = brak w bazie. */
+  duty: { startsAt: string; endsAt: string } | null;
   photoUrl: string | null;
   openStatus: OpenStatus;
   hoursForDate: DayHours[];
@@ -87,4 +91,18 @@ export interface SearchParams {
   openNow?: boolean;
   page?: number;
   perPage?: number;
+  /** Filtr strony miasta: dokładna nazwa miejscowości (+ województwo). */
+  city?: string;
+  voivodeship?: string;
+}
+
+/** Wpis katalogu miast (strony SEO /apteki/[woj]/[miasto]). */
+export interface City {
+  voivodeship: string;
+  voivodeshipSlug: string;
+  city: string;
+  citySlug: string;
+  count: number;
+  lat: number;
+  lng: number;
 }
