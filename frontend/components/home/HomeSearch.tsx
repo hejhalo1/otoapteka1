@@ -31,15 +31,6 @@ export function HomeSearch() {
     window.dispatchEvent(new CustomEvent<Coords>("otoapteka:located", { detail: c }));
   }, []);
 
-  // Punkt z „Zlokalizuj apteki” / wpisania miasta (NIE z kliknięcia mapy) → zjazd do wyników.
-  const applyCoordsAndScroll = useCallback(
-    (c: Coords) => {
-      scrollPendingRef.current = true;
-      applyCoords(c);
-    },
-    [applyCoords],
-  );
-
   useEffect(() => {
     if (coords && scrollPendingRef.current) {
       scrollPendingRef.current = false;
@@ -112,7 +103,6 @@ export function HomeSearch() {
         locating={locating}
         geoError={geoError}
         onLocate={locate}
-        onCity={applyCoordsAndScroll}
       />
 
       {/* ===== WYNIKI: lista + mapa (dopiero po ustaleniu punktu) ===== */}

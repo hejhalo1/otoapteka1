@@ -4,7 +4,7 @@ import React from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type HeroActionTheme = "red" | "blue";
+export type HeroActionTheme = "red" | "blue" | "navy";
 
 // Motywy dopasowane do palety serwisu (czerwony = główna akcja, niebieski = mapa),
 // gradienty przez inline-style (pewne kolory, bez problemów z JIT Tailwinda).
@@ -21,6 +21,11 @@ const THEMES: Record<
     border: "#0b4f9e",
     gradient: "linear-gradient(135deg, #2b6fd0 0%, #0b4f9e 55%, #083a72 100%)",
     shadow: "0 12px 30px -8px rgba(11,79,158,0.45)",
+  },
+  navy: {
+    border: "#122c47",
+    gradient: "linear-gradient(135deg, #22456f 0%, #122c47 60%, #0b1f38 100%)",
+    shadow: "0 12px 30px -8px rgba(18,44,71,0.45)",
   },
 };
 

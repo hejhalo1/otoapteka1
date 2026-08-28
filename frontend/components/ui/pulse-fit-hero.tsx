@@ -30,8 +30,8 @@ export interface PulseFitHeroProps {
   logo?: React.ReactNode;
   navigation?: NavigationItem[];
   ctaButton?: { label: string; onClick: () => void };
-  title: React.ReactNode;
-  subtitle: React.ReactNode;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   primaryAction?: {
     label: string;
     onClick: () => void;
@@ -110,7 +110,6 @@ export function PulseFitHero({
       style={{
         // Czyste tło; dekoracja idzie przez slot `background` (np. kropki).
         background: "#ffffff",
-        minHeight: "calc(100vh - 5rem)",
       }}
       aria-label="Sekcja główna"
     >
@@ -153,7 +152,14 @@ export function PulseFitHero({
       )}
 
       {children ? (
-        <div className="relative z-10 flex w-full flex-1 items-center justify-center">{children}</div>
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 w-full px-4 py-8"
+        >
+          {children}
+        </motion.div>
       ) : (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-10 pt-4">
           <motion.div
