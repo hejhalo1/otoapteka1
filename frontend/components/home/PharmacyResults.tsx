@@ -177,29 +177,9 @@ export function PharmacyResults({
           zaczynają się na tej samej wysokości. Wyrównany do lewej (nad listą):
           kontekst punktu u góry, filtry (dzień + „tylko czynne") pod spodem. */}
       <div className="space-y-2.5">
-          <p className="text-sm text-muted">
-            {onReset ? (
-              <>
-                Blisko:{" "}
-                <span className="font-semibold text-ink-soft">
-                  {center.label ?? "wybrany punkt"}
-                </span>
-                <button
-                  onClick={onReset}
-                  className="pressable ml-2 font-semibold text-pharma-dark hover:underline"
-                >
-                  zmień
-                </button>
-              </>
-            ) : (
-              <span className="font-semibold text-ink-soft">Najbliżej centrum</span>
-            )}
-            {total > 0 && (
-              <span key={total} className="animate-num-in ml-2 inline-block">
-                · {total} {total === 1 ? "apteka" : total < 5 ? "apteki" : "aptek"}
-              </span>
-            )}
-          </p>
+          <h2 className="text-xl font-black uppercase tracking-wide text-ink sm:text-2xl">
+            Dostępne apteki
+          </h2>
           <div className="flex flex-wrap items-center gap-3">
             <DayPicker date={date} today={today} tomorrow={tomorrow} isCustom={isCustom} onChange={setDate} />
             <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm font-semibold text-ink">
@@ -246,6 +226,31 @@ export function PharmacyResults({
               </div>
             )}
           </div>
+
+          {/* Kontekst punktu + licznik — przeniesione pod resztę opcji. */}
+          <p className="pt-1 text-sm text-muted">
+            {onReset ? (
+              <>
+                Blisko:{" "}
+                <span className="font-semibold text-ink-soft">
+                  {center.label ?? "wybrany punkt"}
+                </span>
+                <button
+                  onClick={onReset}
+                  className="pressable ml-2 font-semibold text-pharma-dark hover:underline"
+                >
+                  zmień
+                </button>
+              </>
+            ) : (
+              <span className="font-semibold text-ink-soft">Najbliżej centrum</span>
+            )}
+            {total > 0 && (
+              <span key={total} className="animate-num-in ml-2 inline-block">
+                · {total} {total === 1 ? "apteka" : total < 5 ? "apteki" : "aptek"}
+              </span>
+            )}
+          </p>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,38%)] lg:gap-8">
@@ -320,16 +325,18 @@ export function PharmacyResults({
         )}
         </section>
 
-        {/* Mapa — rama w tym samym stylu (pasy + niebieska ramka), odsunięta od
-            listy (gap). Startuje równo z pierwszą apteką; sticky przy przewijaniu.
-            Ukryta <lg. */}
-        <div
-          className={cn(
-            "bg-pharma-soft hidden rounded-3xl border-2 border-primary/20 p-3 shadow-[var(--shadow-card)] sm:p-4 lg:sticky lg:top-20 lg:block",
-            pickable && "map-pickable",
-          )}
-        >
-          <div className="relative isolate h-[calc(100vh-13rem)] min-h-105 overflow-hidden rounded-2xl border">
+        {/* „MAPA" (napis nad mapą, wyśrodkowany) + rama mapy (sticky). Ukryte <lg. */}
+        <div className="hidden lg:block">
+          <h2 className="mb-3 rounded-2xl bg-primary py-2.5 text-center text-2xl font-black uppercase tracking-wide text-white shadow-[var(--shadow-card)] sm:text-3xl">
+            Mapa
+          </h2>
+          <div
+            className={cn(
+              "bg-primary rounded-3xl border-2 border-primary p-3 shadow-[var(--shadow-card)] sm:p-4 lg:sticky lg:top-20",
+              pickable && "map-pickable",
+            )}
+          >
+            <div className="relative isolate h-[calc(100vh-13rem)] min-h-105 overflow-hidden rounded-2xl border">
         <MapView
           center={center}
           zoom={14}
@@ -355,6 +362,7 @@ export function PharmacyResults({
             <Navigation className="h-4.5 w-4.5" aria-hidden />
           </button>
         )}
+            </div>
           </div>
         </div>
       </div>
