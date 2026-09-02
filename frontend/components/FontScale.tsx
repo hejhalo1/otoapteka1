@@ -11,7 +11,7 @@ const KEY = "otoapteka:fs";
  * Wybór trzymany w localStorage; anti-FOUC robi inline skrypt w layoucie,
  * więc atrybut na <html> jest ustawiony zanim ten komponent się zamontuje.
  */
-export function FontScale() {
+export function FontScale({ className }: { className?: string }) {
   const [scale, setScale] = useState<Scale>("");
 
   useEffect(() => {
@@ -40,7 +40,10 @@ export function FontScale() {
 
   return (
     <div
-      className="hidden items-center gap-0.5 rounded-full border bg-surface p-1 md:flex"
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-full border bg-surface p-1",
+        className,
+      )}
       role="group"
       aria-label="Rozmiar tekstu"
     >

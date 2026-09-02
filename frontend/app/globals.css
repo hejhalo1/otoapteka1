@@ -341,6 +341,30 @@ html::-webkit-scrollbar {
   animation: numIn 320ms var(--ease-out) both;
 }
 
+/* Menu mobilne — panel wysuwa się z prawej, tło pod nim przyciemnia się. */
+@keyframes drawerIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-drawer-in {
+  animation: drawerIn 280ms var(--ease-out) both;
+}
+.animate-overlay-in {
+  animation: overlayIn 220ms var(--ease-out) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -350,7 +374,9 @@ html::-webkit-scrollbar {
   .animate-halo,
   .animate-heart-pop,
   .animate-floaty,
-  .animate-num-in {
+  .animate-num-in,
+  .animate-drawer-in,
+  .animate-overlay-in {
     animation: none;
   }
   .reveal {

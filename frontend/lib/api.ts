@@ -154,11 +154,13 @@ export async function resolveCityClient(
 
 // Slugi (sitemap).
 export async function fetchAllSlugs(): Promise<
-  Array<{ slug: string; updatedAt: string }>
+  Array<{ slug: string; voivodeship: string; city: string; updatedAt: string }>
 > {
   const res = await fetch(`${API_URL}/api/pharmacies/slugs`, {
     next: { revalidate: 3600, tags: ["pharmacy-slugs"] },
   });
   if (!res.ok) throw new Error(`Błąd API: ${res.status}`);
-  return res.json() as Promise<Array<{ slug: string; updatedAt: string }>>;
+  return res.json() as Promise<
+    Array<{ slug: string; voivodeship: string; city: string; updatedAt: string }>
+  >;
 }

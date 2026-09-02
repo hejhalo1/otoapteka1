@@ -49,15 +49,6 @@ export default function RootLayout({
     <html lang="pl" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: fontScaleScript }} />
-        {/* Cienkie niebieskie paski ramujące stronę po bokach (dekoracja). */}
-        <span
-          aria-hidden
-          className="pointer-events-none fixed inset-y-0 left-0 z-50 w-1.5 bg-primary sm:w-2 lg:w-2.5"
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none fixed inset-y-0 right-0 z-50 w-1.5 bg-primary sm:w-2 lg:w-2.5"
-        />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

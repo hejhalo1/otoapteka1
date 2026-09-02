@@ -9,9 +9,12 @@ try {
   /* zostaw domyślny */
 }
 
+// Hosty CartoDB — rastrowe kafle Positron (zwykłe obrazki → tylko img-src).
+const carto = "https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com";
+
 // CSP: 'unsafe-inline' dla script/style to pragmatyczny kompromis z Next+Leaflet
-// (docelowo strict CSP z nonce przez middleware). img-src/connect-src dopuszczają
-// kafelki OSM i API (w tym /uploads).
+// (docelowo strict CSP z nonce przez middleware). img-src dopuszcza kafelki
+// (OSM + CartoDB) i API (w tym /uploads).
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -21,7 +24,7 @@ const csp = [
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
-  `img-src 'self' data: blob: ${tileHost} ${apiUrl}`,
+  `img-src 'self' data: blob: ${tileHost} ${apiUrl} ${carto}`,
   `connect-src 'self' ${apiUrl}`,
   "upgrade-insecure-requests",
 ].join("; ");

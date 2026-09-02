@@ -20,11 +20,15 @@ export class AdminPharmacyService {
   ) {}
 
   // Wyszukiwarka aptek do wyboru (po nazwie/mieście/ulicy).
-  async search(q?: string) {
+  async search(q?: string, voivodeship?: string, city?: string) {
     const query = (q ?? '').trim();
+    const woj = (voivodeship ?? '').trim();
+    const cityName = (city ?? '').trim();
     return this.prisma.pharmacy.findMany({
       where: {
         removedFromRegistryAt: null,
+        ...(woj ? { voivodeship: { equals: woj, mode: 'insensitive' } } : {}),
+        ...(cityName ? { city: { equals: cityName, mode: 'insensitive' } } : {}),
         ...(query
           ? {
               OR: [
@@ -35,9 +39,17 @@ export class AdminPharmacyService {
             }
           : {}),
       },
-      orderBy: [{ city: 'asc' }, { name: 'asc' }],
-      take: 25,
-      select: { id: true, name: true, slug: true, city: true, street: true },
+      orderBy: [{ voivodeship: 'asc' }, { city: 'asc' }, { name: 'asc' }],
+      // Wyszukiwanie: krótka lista. Wybór miasta: pełna lista aptek tego miasta.
+      take: cityName ? 300 : 50,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        city: true,
+        street: true,
+        voivodeship: true,
+      },
     });
   }
 

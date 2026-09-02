@@ -97,7 +97,7 @@ export function HomeSearch() {
   }, [coords]);
 
   return (
-    <div>
+    <div className="bg-white">
       {/* ===== HERO (styl/animacje/layout „PulseFit”, treści i dane nasze) ===== */}
       <HomeHero
         locating={locating}
@@ -105,17 +105,22 @@ export function HomeSearch() {
         onLocate={locate}
       />
 
-      {/* ===== WYNIKI: lista + mapa (dopiero po ustaleniu punktu) ===== */}
-      {coords && (
-        <div ref={resultsRef} className="mx-auto max-w-[90rem] scroll-mt-24 px-4 pb-10 pt-6">
-          <PharmacyResults
-            center={coords}
-            onPickPoint={pickOnMap}
-            onLocate={locate}
-            onReset={resetLocation}
-          />
-        </div>
-      )}
+      {/* Wyraźna kreska rozdzielająca hero od dolnej sekcji (zawsze widoczna) */}
+      <div className="mx-auto max-w-[104rem] px-4">
+        <div className="border-t-2 border-ink/15" />
+      </div>
+
+      {/* ===== DOLNA SEKCJA (zawsze widoczna): opcje + mapa; w miejscu listy albo
+              apteki (po lokalizacji), albo placeholder z ikonami (przed). ===== */}
+      <div ref={resultsRef} className="mx-auto max-w-[104rem] scroll-mt-24 px-4 pb-10 pt-6">
+        <PharmacyResults
+          center={coords}
+          locating={locating}
+          onPickPoint={pickOnMap}
+          onLocate={locate}
+          onReset={resetLocation}
+        />
+      </div>
     </div>
   );
 }

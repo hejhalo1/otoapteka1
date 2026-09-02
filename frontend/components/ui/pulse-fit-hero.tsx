@@ -108,8 +108,8 @@ export function PulseFitHero({
     <section
       className={cn("relative flex w-full flex-col overflow-hidden", className)}
       style={{
-        // Czyste tło; dekoracja idzie przez slot `background` (np. kropki).
-        background: "#ffffff",
+        // Przezroczyste — hero dzieli to samo tło strony co wyniki (bez dwutonowości).
+        background: "transparent",
       }}
       aria-label="Sekcja główna"
     >

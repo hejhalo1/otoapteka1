@@ -27,8 +27,12 @@ export class AdminPharmaciesController {
   constructor(private readonly svc: AdminPharmacyService) {}
 
   @Get()
-  search(@Query('q') q?: string) {
-    return this.svc.search(q);
+  search(
+    @Query('q') q?: string,
+    @Query('voivodeship') voivodeship?: string,
+    @Query('city') city?: string,
+  ) {
+    return this.svc.search(q, voivodeship, city);
   }
 
   @Get(':pid')

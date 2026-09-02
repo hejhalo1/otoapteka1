@@ -39,13 +39,13 @@ export function SegmentedTabs({
 
   return (
     <div
-      className={cn("relative flex items-center rounded-full border bg-surface p-1", className)}
+      className={cn("relative flex items-center rounded-md border bg-surface p-1", className)}
       role="tablist"
     >
       {pill && (
         <span
           aria-hidden
-          className="absolute bottom-1 top-1 rounded-full bg-ink shadow-sm transition-all duration-300 [transition-timing-function:var(--ease-out)]"
+          className="absolute bottom-1 top-1 rounded bg-ink shadow-sm transition-all duration-300 [transition-timing-function:var(--ease-out)]"
           style={{ left: pill.left, width: pill.width }}
         />
       )}
@@ -62,7 +62,7 @@ export function SegmentedTabs({
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-300",
+              "relative z-10 rounded px-4 py-2 text-sm font-semibold transition-colors duration-300",
               active ? "text-white" : "text-ink-soft hover:text-ink",
             )}
           >

@@ -31,11 +31,20 @@ export interface LeafletMapProps {
   markers?: MapMarker[];
   onPick?: (coords: { lat: number; lng: number }) => void;
   pickMarker?: { lat: number; lng: number } | null;
+  /**
+   * Gdy ustawione — mapa kadruje OBA punkty (np. Ty + najechana apteka) z marginesem,
+   * sama dobierając środek i zoom (fitBounds). Ma pierwszeństwo przed center/zoom.
+   * Wyzerowanie (null) → płynny powrót do center/zoom.
+   */
+  fitPair?: [{ lat: number; lng: number }, { lat: number; lng: number }] | null;
   className?: string;
 }
 
+// Jasny styl CartoDB Positron (rastrowy) — czysty wygląd jak wektorowy Positron,
+// ale bez WebGL/workera (działa niezawodnie z Next/Turbopack). Nasze piny zostają.
 const TILE_URL =
-  process.env.NEXT_PUBLIC_TILE_URL ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  process.env.NEXT_PUBLIC_TILE_URL ??
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
 // Pin apteczny — kropla z białym krzyżem, spójna z logo serwisu.
 function pin(color: string) {
@@ -67,6 +76,19 @@ function numberedPin(index: number, active: boolean) {
   });
 }
 
+// Gdy kontener zmienia rozmiar (np. mapa „dokuje się" i zmienia wysokość) — Leaflet
+// musi przeliczyć swój rozmiar, inaczej kafle/piny lądują z przesunięciem.
+function AutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    const ro = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [map]);
+  return null;
+}
+
 function ClickHandler({ onPick }: { onPick?: (c: { lat: number; lng: number }) => void }) {
   useMapEvents({
     click(e) {
@@ -79,20 +101,47 @@ function ClickHandler({ onPick }: { onPick?: (c: { lat: number; lng: number }) =
 function Recenter({
   center,
   zoom,
+  fitPair,
 }: {
   center: { lat: number; lng: number };
   zoom?: number;
+  fitPair?: [{ lat: number; lng: number }, { lat: number; lng: number }] | null;
 }) {
   const map = useMap();
   const prevZoom = useRef(zoom);
+  const hadFit = useRef(false);
+  const a = fitPair?.[0];
+  const b = fitPair?.[1];
   useEffect(() => {
+    // Hover na liście: pokaż OBA punkty (Ty + apteka). fitBounds sam liczy środek
+    // i zoom tak, by zmieściły się z marginesem — koniec „losowego” punktu z heurystyki.
+    if (a && b) {
+      hadFit.current = true;
+      map.flyToBounds(
+        L.latLngBounds([
+          [a.lat, a.lng],
+          [b.lat, b.lng],
+        ]),
+        { paddingTopLeft: [40, 56], paddingBottomRight: [40, 40], maxZoom: 16, duration: 0.45 },
+      );
+      return;
+    }
+    // Powrót z hovera → płynnie wróć do widoku punktu odniesienia.
+    if (hadFit.current) {
+      hadFit.current = false;
+      prevZoom.current = zoom;
+      map.flyTo([center.lat, center.lng], zoom ?? map.getZoom(), { duration: 0.4 });
+      return;
+    }
     // Celowy SPADEK propa zoom (np. powrót do widoku Polski po „zmień”) stosujemy wprost;
     // w pozostałych wypadkach dociągamy zoom tylko w górę — nie cofamy przybliżenia usera.
     const reset = zoom != null && prevZoom.current != null && zoom < prevZoom.current;
     prevZoom.current = zoom;
     const target = zoom && (reset || map.getZoom() < zoom) ? zoom : map.getZoom();
     map.setView([center.lat, center.lng], target);
-  }, [center.lat, center.lng, zoom, map]);
+    // Zależymy od współrzędnych pary (a/b są nowymi obiektami co render — stąd prymitywy).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center.lat, center.lng, zoom, a?.lat, a?.lng, b?.lat, b?.lng, map]);
   return null;
 }
 
@@ -102,6 +151,7 @@ export default function LeafletMap({
   markers = [],
   onPick,
   pickMarker,
+  fitPair,
   className,
 }: LeafletMapProps) {
   return (
@@ -113,10 +163,13 @@ export default function LeafletMap({
     >
       <TileLayer
         url={TILE_URL}
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        maxZoom={19}
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        subdomains="abcd"
+        maxZoom={20}
+        detectRetina
       />
-      <Recenter center={center} zoom={zoom} />
+      <Recenter center={center} zoom={zoom} fitPair={fitPair} />
+      <AutoResize />
       {onPick && <ClickHandler onPick={onPick} />}
 
       {pickMarker && <Marker position={[pickMarker.lat, pickMarker.lng]} icon={pickIcon} />}

@@ -454,14 +454,19 @@ export class PharmaciesService {
     };
   }
 
-  async getAllSlugs(): Promise<Array<{ slug: string; updatedAt: string }>> {
+  async getAllSlugs(): Promise<
+    Array<{ slug: string; voivodeship: string; city: string; updatedAt: string }>
+  > {
     const rows = await this.prisma.pharmacy.findMany({
       where: { removedFromRegistryAt: null, status: 'AKTYWNA' },
-      select: { slug: true, updatedAt: true },
+      // voivodeship + city — by sitemap zbudował kanoniczny adres /apteki/woj/miasto/slug.
+      select: { slug: true, voivodeship: true, city: true, updatedAt: true },
       orderBy: { slug: 'asc' },
     });
     return rows.map((r) => ({
       slug: r.slug,
+      voivodeship: r.voivodeship,
+      city: r.city,
       updatedAt: r.updatedAt.toISOString(),
     }));
   }

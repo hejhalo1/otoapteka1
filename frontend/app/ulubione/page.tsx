@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight, HeartOff, Phone } from "lucide-react";
 import { fetchPharmacyBySlugClient } from "@/lib/api";
 import { useFavorites } from "@/lib/favorites";
+import { pharmacyPath } from "@/lib/slug";
 import type { PharmacyDetail } from "@/lib/types";
 import { OpenBadge } from "@/components/OpenBadge";
 import { FavoriteButton } from "@/components/FavoriteButton";
@@ -67,7 +68,7 @@ export default function FavoritesPage() {
           visible.map((p, i) => (
             <Link
               key={p.slug}
-              href={`/apteka/${p.slug}`}
+              href={pharmacyPath(p.address.voivodeship, p.address.city, p.slug)}
               className="card-hover animate-card-in group block rounded-2xl border bg-surface p-4 shadow-[var(--shadow-card)]"
               style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
             >

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Clock, Megaphone, MoonStar, ShieldCheck, Syringe } from "lucide-react";
 import { assetUrl, fetchPromoSlides, type PromoSlide } from "@/lib/api";
 import { PulseFitHero, type ProgramCard } from "@/components/ui/pulse-fit-hero";
-import { DotPattern } from "@/components/ui/dot-pattern";
 import { HomeShowcase } from "./HomeShowcase";
 
 // Domyślna galeria (gdy admin nie dodał slajdów) — te same treści co dawniej.
@@ -81,19 +80,7 @@ export function HomeHero({
       : DEFAULT_PROGRAMS;
 
   return (
-    <PulseFitHero
-      showHeader={false}
-      background={
-        <DotPattern
-          width={22}
-          height={22}
-          cx={1}
-          cy={1}
-          cr={1.1}
-          className="fill-primary/20 [mask-image:radial-gradient(80%_70%_at_50%_35%,#000_25%,transparent_85%)]"
-        />
-      }
-    >
+    <PulseFitHero showHeader={false}>
       <HomeShowcase
         programs={programs}
         locating={locating}

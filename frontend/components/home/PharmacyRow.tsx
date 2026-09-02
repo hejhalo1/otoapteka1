@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Car, ChevronRight, Footprints, MapPin, MoonStar } from "lucide-react";
+import { ArrowRight, Car, Footprints, MapPin, MoonStar } from "lucide-react";
 import type { PharmacyCard, OpenState } from "@/lib/types";
 import { ANNOUNCEMENT_LABELS, formatDistance, formatMinutes } from "@/lib/format";
+import { pharmacyPath } from "@/lib/slug";
 import { PharmacyTile } from "@/components/PharmacyTile";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +80,7 @@ export function PharmacyRow({
 
   return (
     <Link
-      href={`/apteka/${p.slug}`}
+      href={pharmacyPath(p.address.voivodeship, p.address.city, p.slug)}
       onMouseEnter={() => onHover?.(p.id)}
       onMouseLeave={() => onHover?.(null)}
       onFocus={() => onHover?.(p.id)}
@@ -88,7 +89,7 @@ export function PharmacyRow({
       style={{ animationDelay: `${Math.min(index - 1, 8) * 45}ms` }}
     >
         {/* ŚRODEK: treść karty */}
-        <div className="relative min-w-0 flex-1 p-4">
+        <div className="relative min-w-0 flex-1 p-3 sm:p-4">
         {/* Numer korespondujący z pinem na mapie (wewnątrz — overflow-hidden go nie utnie). */}
         <span
           aria-hidden
@@ -97,10 +98,10 @@ export function PharmacyRow({
           {index}
         </span>
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <PharmacyTile className="h-24 w-28 sm:h-[104px] sm:w-32" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5 sm:gap-x-5 sm:gap-y-3">
+          <PharmacyTile className="h-20 w-24 sm:h-[104px] sm:w-32" />
 
-          <div className="min-w-0 flex-1 basis-44">
+          <div className="min-w-0 flex-1 basis-40 sm:basis-44">
             <h3 className="truncate text-lg font-extrabold text-ink">{p.name}</h3>
             <p className="mt-0.5 truncate text-sm text-muted">
               {p.address.street}, {p.address.postalCode} {p.address.city}
@@ -131,7 +132,7 @@ export function PharmacyRow({
               {capsText}
             </div>
             <div
-              className={cn("mt-1 text-2xl font-extrabold tabular-nums tracking-tight", bigCls)}
+              className={cn("mt-1 text-xl font-extrabold tabular-nums tracking-tight sm:text-2xl", bigCls)}
               title={hoursStr}
             >
               {bigText}
@@ -139,37 +140,48 @@ export function PharmacyRow({
           </div>
         </div>
 
-        {/* Dolny pasek: znaczek „i” + info z apteki, po prawej przycisk „Karta apteki”. */}
-        <div className="mt-3.5 flex items-center gap-2 border-t pt-3">
+        {/* Dolny pasek: znaczek „i” + info z apteki (na mobile do 2 linijek),
+            po prawej okrągła strzałka „Karta apteki”. */}
+        <div className="mt-3 flex items-start gap-2 border-t pt-2.5 sm:items-center sm:pt-3">
           <span
             aria-hidden
-            className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-pharma-dark text-[11px] font-black leading-none text-white"
+            className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-pharma-dark text-[11px] font-black leading-none text-white sm:mt-0"
           >
             i
           </span>
-          {p.latestAnnouncement ? (
-            <>
-              <span className="shrink-0 text-sm font-bold text-pharma-dark">Info z apteki:</span>
-              <span className="min-w-0 truncate text-sm text-pharma-dark">
+          <p className="min-w-0 flex-1 text-sm leading-snug text-pharma-dark">
+            {p.latestAnnouncement ? (
+              <span className="line-clamp-2 sm:line-clamp-1">
+                <span className="font-bold">Info z apteki: </span>
                 {ANNOUNCEMENT_LABELS[p.latestAnnouncement.type] ?? "Komunikat"}
-                {" — "}
+                {": "}
                 {p.latestAnnouncement.title}
               </span>
-            </>
-          ) : (
-            <span className="truncate text-sm font-semibold text-pharma-dark">
-              Informacje o aptece
+            ) : (
+              <span className="font-semibold">Informacje o aptece</span>
+            )}
+          </p>
+          {/* Zamiast przycisku — okrągła strzałka; po najechaniu na kafelek rozwija się
+              w lewo z napisem „Karta apteki", żeby było jasne, że klik przenosi dalej. */}
+          <span
+            title="Karta apteki"
+            className="flex shrink-0 items-center rounded-full bg-pharma p-2 text-sm font-bold text-white shadow-sm transition-colors duration-300 group-hover:bg-pharma-dark"
+          >
+            <span className="grid grid-cols-[0fr] transition-[grid-template-columns] duration-300 ease-out group-hover:grid-cols-[1fr]">
+              <span className="min-w-0 overflow-hidden whitespace-nowrap pl-1 pr-1.5">Karta apteki</span>
             </span>
-          )}
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-pharma px-3.5 py-2 text-sm font-bold text-white shadow-sm transition-colors duration-200 group-hover:bg-pharma-dark">
-            Karta apteki
-            <ChevronRight className="chev h-4 w-4" aria-hidden />
+            <ArrowRight className="h-5 w-5 shrink-0" aria-hidden />
           </span>
         </div>
       </div>
 
-      {/* PRAWA kolumna: sekcja dyżuru — pomarańczowa, pełna wysokość, treść wyśrodkowana. */}
-      <div className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 bg-[#e0722f] px-2 py-3 text-center text-white">
+      {/* PRAWA kolumna: sekcja dyżuru — niebieska gdy jest dyżur, szara gdy brak. */}
+      <div
+        className={cn(
+          "flex w-20 shrink-0 flex-col items-center justify-center gap-1 px-2 py-3 text-center text-white sm:w-24",
+          duty ? "bg-pharma" : "bg-muted",
+        )}
+      >
         <MoonStar className="h-5 w-5" aria-hidden />
         <div className="text-[10px] font-extrabold uppercase leading-tight tracking-wide">
           Dyżur

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { fetchAllSlugs, fetchCities } from "@/lib/api";
+import { pharmacyPath } from "@/lib/slug";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -19,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchAllSlugs()
       .then((slugs) =>
         slugs.map<MetadataRoute.Sitemap[number]>((s) => ({
-          url: `${siteUrl}/apteka/${s.slug}`,
+          url: `${siteUrl}${pharmacyPath(s.voivodeship, s.city, s.slug)}`,
           lastModified: s.updatedAt,
           changeFrequency: "weekly",
           priority: 0.7,

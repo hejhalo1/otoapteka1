@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   ChevronDown,
+  Map as MapIcon,
   MapPinOff,
   MousePointerClick,
   Navigation,
@@ -24,6 +26,8 @@ const PER_PAGE = 10;
 /** Dozwolone wartości promienia (km). Slider skacze tylko po tych stopniach. */
 const RADIUS_STOPS = [1, 5, 10, 15, 20, 30];
 const DEFAULT_RADIUS_KM = 10;
+// Widok mapy przed ustaleniem punktu — środek Polski.
+const POLAND_CENTER = { lat: 52.0693, lng: 19.4803 };
 
 function RowSkeleton() {
   return (
@@ -61,15 +65,19 @@ export function PharmacyResults({
   cityFilter,
   initial,
   initialOpenNow = true,
+  locating,
   onPickPoint,
   onLocate,
   onReset,
 }: {
-  center: Coords;
+  /** Punkt odniesienia. Na stronie głównej przed lokalizacją: null → placeholder. */
+  center: Coords | null;
   cityFilter?: CityFilter;
   initial?: PharmacyListResponse;
   /** Domyślny stan filtra „tylko czynne”. Home: true (blisko Ciebie), miasto: false (pełna baza). */
   initialOpenNow?: boolean;
+  /** Trwa ustalanie lokalizacji (do etykiety przycisku w placeholderze). */
+  locating?: boolean;
   onPickPoint?: (c: { lat: number; lng: number }) => void;
   onLocate?: () => void;
   onReset?: () => void;
@@ -98,6 +106,7 @@ export function PharmacyResults({
 
   const load = useCallback(
     async (page: number, replace: boolean) => {
+      if (!center) return; // brak punktu (home przed lokalizacją) → nie pobieramy
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -112,7 +121,10 @@ export function PharmacyResults({
             perPage: PER_PAGE,
             page,
             date,
-            openNow,
+            // „Tylko czynne" = otwarte TERAZ — ma sens jedynie dla DZIŚ. Dla jutra/innego
+            // dnia NIE filtrujemy po „teraz" (inaczej backend liczy wg bieżącej godziny
+            // na przyszły dzień → zero wyników).
+            openNow: openNow && date === today,
             city: cityFilter?.city,
             voivodeship: cityFilter?.voivodeship,
           },
@@ -137,7 +149,7 @@ export function PharmacyResults({
         if (abortRef.current === ctrl) setLoading(false);
       }
     },
-    [center.lat, center.lng, date, openNow, radiusKm, cityFilter],
+    [center, date, openNow, radiusKm, cityFilter, today],
   );
 
   // Przeładuj od strony 1 przy zmianie punktu/dnia/filtra. Pierwsze uruchomienie
@@ -150,86 +162,88 @@ export function PharmacyResults({
     pageRef.current = 1;
     void load(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [center.lat, center.lng, date, openNow, radiusKm, cityKey]);
+  }, [center?.lat, center?.lng, date, openNow, radiusKm, cityKey]);
 
   const loadMore = () => {
     if (loading) return;
     void load(pageRef.current + 1, false);
   };
 
-  const markers = items
-    .map((p, i) => ({ p, i }))
-    .filter(({ p }) => p.lat != null && p.lng != null)
-    .map(({ p, i }) => ({
-      lat: p.lat as number,
-      lng: p.lng as number,
-      name: p.name,
-      slug: p.slug,
-      index: i + 1,
-      active: hoveredId === p.id,
-    }));
+  const markers = center
+    ? items
+        .map((p, i) => ({ p, i }))
+        .filter(({ p }) => p.lat != null && p.lng != null)
+        .map(({ p, i }) => ({
+          lat: p.lat as number,
+          lng: p.lng as number,
+          name: p.name,
+          slug: p.slug,
+          index: i + 1,
+          active: hoveredId === p.id,
+        }))
+    : [];
 
   const pickable = Boolean(onPickPoint);
 
   return (
     <div className="space-y-4">
-      {/* Pasek narzędzi nad kolumnami — dzięki temu mapa i pierwsza apteka
-          zaczynają się na tej samej wysokości. Wyrównany do lewej (nad listą):
-          kontekst punktu u góry, filtry (dzień + „tylko czynne") pod spodem. */}
-      <div className="space-y-2.5">
-          <h2 className="text-xl font-black uppercase tracking-wide text-ink sm:text-2xl">
-            Dostępne apteki
-          </h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <DayPicker date={date} today={today} tomorrow={tomorrow} isCustom={isCustom} onChange={setDate} />
-            <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm font-semibold text-ink">
+      <h2 className="text-xl font-black uppercase tracking-wide text-ink sm:text-2xl">
+        Dostępne apteki
+      </h2>
+
+      {/* Wspólny, „uziemiony" pasek wszystkich opcji (dzień, „tylko czynne", promień,
+          punkt) — kwadratowe rogi, przyklejony przy scrollu, więc zawsze widoczny. */}
+      <div className="sticky top-[5.25rem] z-20 rounded-md border border-line bg-surface/80 px-3 py-2.5 shadow-[var(--shadow-card)] backdrop-blur">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <DayPicker date={date} today={today} tomorrow={tomorrow} isCustom={isCustom} onChange={setDate} />
+          <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm font-semibold text-ink">
+            <span
+              className={cn(
+                "relative h-6 w-11 rounded-full transition-colors duration-300",
+                openNow ? "bg-pharma" : "bg-line",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={openNow}
+                onChange={(e) => setOpenNow(e.target.checked)}
+                className="peer sr-only"
+              />
               <span
+                aria-hidden
                 className={cn(
-                  "relative h-6 w-11 rounded-full transition-colors duration-300",
-                  openNow ? "bg-pharma" : "bg-line",
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300 [transition-timing-function:var(--ease-spring)] peer-focus-visible:ring-2 peer-focus-visible:ring-primary",
+                  openNow ? "left-[22px]" : "left-0.5",
                 )}
-              >
-                <input
-                  type="checkbox"
-                  checked={openNow}
-                  onChange={(e) => setOpenNow(e.target.checked)}
-                  className="peer sr-only"
-                />
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300 [transition-timing-function:var(--ease-spring)] peer-focus-visible:ring-2 peer-focus-visible:ring-primary",
-                    openNow ? "left-[22px]" : "left-0.5",
-                  )}
-                />
-              </span>
-              Tylko czynne
-            </label>
+              />
+            </span>
+            Tylko czynne
+          </label>
 
-            {/* Promień wyszukiwania — obok filtrów (dzień, „tylko czynne"), zawija
-                się niżej dopiero przy braku miejsca. Slider skacze po stałych
-                stopniach (1…30 km). Tylko dla wyszukiwania po punkcie. */}
-            {!cityFilter && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-ink-soft">Promień</span>
-                <Slider
-                  value={[Math.max(0, RADIUS_STOPS.indexOf(radiusKm))]}
-                  display={radiusKm}
-                  valueLabel="inline"
-                  min={0}
-                  max={RADIUS_STOPS.length - 1}
-                  step={1}
-                  onValueChange={(v) => setRadiusKm(RADIUS_STOPS[v[0] ?? 0] ?? DEFAULT_RADIUS_KM)}
-                  className="w-32"
-                  aria-label="Promień wyszukiwania w kilometrach"
-                />
-              </div>
-            )}
-          </div>
+          {/* Promień — tylko dla wyszukiwania po punkcie. Slider skacze po stopniach (1…30 km). */}
+          {!cityFilter && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-ink-soft">Promień</span>
+              <Slider
+                value={[Math.max(0, RADIUS_STOPS.indexOf(radiusKm))]}
+                display={radiusKm}
+                valueLabel="inline"
+                min={0}
+                max={RADIUS_STOPS.length - 1}
+                step={1}
+                onValueChange={(v) => setRadiusKm(RADIUS_STOPS[v[0] ?? 0] ?? DEFAULT_RADIUS_KM)}
+                className="w-32"
+                aria-label="Promień wyszukiwania w kilometrach"
+              />
+            </div>
+          )}
 
-          {/* Kontekst punktu + licznik — przeniesione pod resztę opcji. */}
-          <p className="pt-1 text-sm text-muted">
-            {onReset ? (
+        </div>
+
+        {/* Kontekst punktu + licznik — osobna linia pod filtrami (nie „rozjeżdża" paska) */}
+        <p className="mt-2 text-sm text-muted">
+          {center ? (
+            onReset ? (
               <>
                 Blisko:{" "}
                 <span className="font-semibold text-ink-soft">
@@ -244,20 +258,26 @@ export function PharmacyResults({
               </>
             ) : (
               <span className="font-semibold text-ink-soft">Najbliżej centrum</span>
-            )}
-            {total > 0 && (
-              <span key={total} className="animate-num-in ml-2 inline-block">
-                · {total} {total === 1 ? "apteka" : total < 5 ? "apteki" : "aptek"}
-              </span>
-            )}
-          </p>
+            )
+          ) : (
+            <span className="font-semibold text-ink-soft">
+              Podaj lokalizację, aby zobaczyć najbliższe apteki
+            </span>
+          )}
+          {total > 0 && (
+            <span key={total} className="animate-num-in ml-2 inline-block">
+              · {total} {total === 1 ? "apteka" : total < 5 ? "apteki" : "aptek"}
+            </span>
+          )}
+        </p>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,38%)] lg:gap-8">
-        {/* Lista aptek w ramce: ukośne pasy niebieski/biały + zaokrąglona
-            niebieska ramka; białe kafelki wyraźnie odcinają się od tła. */}
-        <section className="bg-pharma-soft rounded-3xl border-2 border-primary/20 p-3 shadow-[var(--shadow-card)] sm:p-4">
-        {error ? (
+        {/* Lista aptek — bez tła i ramki; same karty na białym tle strony. */}
+        <section className="min-w-0">
+        {!center ? (
+          <LocatePrompt onLocate={onLocate} locating={locating} />
+        ) : error ? (
           <div className="rounded-2xl border bg-surface p-8 text-center shadow-[var(--shadow-card)]">
             <p className="font-medium text-danger">{error}</p>
             <button
@@ -265,7 +285,7 @@ export function PharmacyResults({
                 pageRef.current = 1;
                 void load(1, true);
               }}
-              className="pressable mt-3 rounded-xl bg-pharma px-5 py-2.5 font-bold text-white hover:bg-pharma-dark"
+              className="pressable mt-3 rounded-md bg-pharma px-5 py-2.5 font-bold text-white hover:bg-pharma-dark"
             >
               Spróbuj ponownie
             </button>
@@ -305,7 +325,7 @@ export function PharmacyResults({
               <button
                 onClick={loadMore}
                 disabled={loading}
-                className="pressable group mx-auto flex items-center gap-2 rounded-full px-6 py-3 font-bold text-ink transition-colors hover:text-pharma disabled:opacity-60"
+                className="pressable group mx-auto flex items-center gap-2 rounded-md px-6 py-3 font-bold text-ink transition-colors hover:text-pharma disabled:opacity-60"
               >
                 {loading ? "Wczytywanie…" : "Pokaż więcej aptek"}
                 <ChevronDown
@@ -325,22 +345,21 @@ export function PharmacyResults({
         )}
         </section>
 
-        {/* „MAPA" (napis nad mapą, wyśrodkowany) + rama mapy (sticky). Ukryte <lg. */}
-        <div className="hidden lg:block">
-          <h2 className="mb-3 rounded-2xl bg-primary py-2.5 text-center text-2xl font-black uppercase tracking-wide text-white shadow-[var(--shadow-card)] sm:text-3xl">
-            Mapa
-          </h2>
+        {/* Mapa — bez napisu i bez niebieskiej ramki; przyklejona przy scrollu,
+            tuż pod paskiem opcji. Kolumna rozciąga się na wysokość listy
+            (lg:self-stretch), dzięki czemu sticky ma „drogę" i mapa śledzi w dół. */}
+        <div className="hidden lg:block lg:self-stretch">
           <div
             className={cn(
-              "bg-primary rounded-3xl border-2 border-primary p-3 shadow-[var(--shadow-card)] sm:p-4 lg:sticky lg:top-20",
+              "lg:sticky lg:top-40",
               pickable && "map-pickable",
             )}
           >
-            <div className="relative isolate h-[calc(100vh-13rem)] min-h-105 overflow-hidden rounded-2xl border">
+            <div className="relative isolate h-[calc(100vh-13rem)] min-h-105 overflow-hidden rounded-2xl shadow-[var(--shadow-card)]">
         <MapView
-          center={center}
-          zoom={14}
-          pickMarker={pickable ? center : null}
+          center={center ?? POLAND_CENTER}
+          zoom={center ? 14 : 6}
+          pickMarker={pickable && center ? center : null}
           markers={markers}
           onPick={onPickPoint}
         />
@@ -348,7 +367,7 @@ export function PharmacyResults({
         {pickable && (
           <div className="pointer-events-none absolute left-16 top-3 z-[1001] flex items-center gap-1.5 rounded-xl border bg-surface/90 px-2.5 py-1.5 text-xs font-semibold text-ink-soft shadow-[var(--shadow-card)] backdrop-blur">
             <MousePointerClick className="h-3.5 w-3.5 text-pharma" aria-hidden />
-            Kliknij, aby zmienić punkt
+            {center ? "Kliknij, aby zmienić punkt" : "Kliknij, aby wskazać punkt"}
           </div>
         )}
 
@@ -366,6 +385,47 @@ export function PharmacyResults({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Placeholder w miejscu listy, gdy nie ma jeszcze lokalizacji: dwa kafle akcji
+ * (podaj lokalizację LUB otwórz mapę) — zamiast aptek, bo bez punktu ich nie znamy.
+ */
+function LocatePrompt({
+  onLocate,
+  locating,
+}: {
+  onLocate?: () => void;
+  locating?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-5 pt-2 sm:flex-row sm:gap-8">
+      <button
+        onClick={onLocate}
+        disabled={locating}
+        className="pressable group flex w-48 flex-col items-center gap-3 rounded-xl border border-line bg-surface p-6 text-center shadow-[var(--shadow-card)] transition-colors hover:border-pharma hover:bg-pharma-soft disabled:opacity-60"
+      >
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-pharma text-white transition-transform duration-300 group-hover:scale-105">
+          <Navigation className="h-8 w-8" aria-hidden />
+        </span>
+        <span className="text-sm font-bold text-ink">
+          {locating ? "Ustalanie…" : "Użyj mojej lokalizacji"}
+        </span>
+      </button>
+
+      <span className="text-sm font-black uppercase tracking-widest text-muted">lub</span>
+
+      <Link
+        href="/mapa"
+        className="pressable group flex w-48 flex-col items-center gap-3 rounded-xl border border-line bg-surface p-6 text-center shadow-[var(--shadow-card)] transition-colors hover:border-pharma hover:bg-pharma-soft"
+      >
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-ink text-white transition-transform duration-300 group-hover:scale-105">
+          <MapIcon className="h-8 w-8" aria-hidden />
+        </span>
+        <span className="text-sm font-bold text-ink">Otwórz mapę</span>
+      </Link>
     </div>
   );
 }
@@ -412,7 +472,7 @@ function DayPicker({
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       <SegmentedTabs
         value={isCustom ? "custom-hint" : date}
         onChange={(v) => v !== "custom-hint" && onChange(v)}
@@ -428,7 +488,7 @@ function DayPicker({
           aria-haspopup="dialog"
           aria-expanded={open}
           className={cn(
-            "pressable inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors",
+            "pressable inline-flex cursor-pointer items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold transition-colors",
             isCustom ? "border-pharma bg-pharma-soft text-pharma-dark" : "bg-surface text-ink hover:border-pharma",
           )}
         >

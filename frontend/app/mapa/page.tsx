@@ -8,6 +8,7 @@ import { fetchPharmacies } from "@/lib/api";
 import { CITIES, Coords, getCurrentPosition } from "@/lib/geo";
 import type { PharmacyCard } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
+import { pharmacyPath } from "@/lib/slug";
 import { OpenBadge } from "@/components/OpenBadge";
 import { FavoriteButton } from "@/components/FavoriteButton";
 
@@ -121,7 +122,7 @@ export default function MapaPage() {
             items.map((p, i) => (
               <Link
                 key={p.id}
-                href={`/apteka/${p.slug}`}
+                href={pharmacyPath(p.address.voivodeship, p.address.city, p.slug)}
                 className="card-hover animate-card-in group block rounded-xl border bg-surface p-3 shadow-[var(--shadow-card)]"
                 style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
               >
