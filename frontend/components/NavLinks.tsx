@@ -1,14 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Home, Info, MapPin, Search } from "lucide-react";
+import { ArrowLeft, Heart, Home, Info, MapPin, Search, X } from "lucide-react";
+import { reverseCity } from "@/lib/api";
+import type { Coords } from "@/lib/geo";
+import { clearLastLocation, readLastLocation } from "@/lib/last-location";
 import { useFavorites } from "@/lib/favorites";
 import { cn } from "@/lib/utils";
+import LinkButton from "@/components/ui/link-button";
 
-// Nawigacja „grounded": zwykłe czarne linki (bez pigułek). Trzy landingi:
-// Strona główna · Wyszukaj (apteki wg województw/miast) · O nas. Ulubione i „Moja
-// lokalizacja" wyniesione do prawego klastra (patrz Header). Aktywna = podkreślenie.
+// Nawigacja: efekt „LinkButton" (podkreślenie wjeżdżające na hover + ikona
+// reprezentująca stronę, obracająca się -45° jak strzałka). Trzy landingi, bez
+// osobnego wskaźnika aktywnej strony.
 const NAV_ITEMS = [
   { name: "Strona główna", url: "/", icon: Home },
   { name: "Wyszukaj", url: "/apteki", icon: Search },
@@ -17,29 +22,37 @@ const NAV_ITEMS = [
 
 export function NavLinks({ className }: { className?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   return (
     <nav
-      className={cn("flex items-center gap-1 text-sm font-semibold sm:gap-4", className)}
+      className={cn("flex items-center gap-4 text-ink sm:gap-6", className)}
       aria-label="Nawigacja"
     >
       {NAV_ITEMS.map((item) => {
         const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
-        const Icon = item.icon;
         return (
-          <Link
+          <LinkButton
             key={item.url}
             href={item.url}
+            btnText={item.name}
+            mobileText={item.name}
+            compact={false}
+            icon={item.icon}
+            textColor="currentColor"
+            hoverColor="#0b4f9e"
+            underlineHeight={2}
+            sizeClassName="text-sm"
+            iconSizeClassName="size-4"
+            className="font-semibold"
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "pressable flex items-center gap-1.5 rounded-lg px-2 py-2 text-ink transition-colors",
-              active
-                ? "underline decoration-ink decoration-2 underline-offset-[6px]"
-                : "hover:text-ink/55",
-            )}
-          >
-            <Icon className="h-4 w-4 sm:hidden" aria-hidden />
-            <span className="hidden sm:inline">{item.name}</span>
-          </Link>
+            // Zachowujemy nawigację SPA (router.push), ale nie psujemy otwierania w nowej
+            // karcie: przy Ctrl/Cmd/Shift/Alt lub kliknięciu środkowym zostawiamy href.
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
+              router.push(item.url);
+            }}
+          />
         );
       })}
     </nav>
@@ -62,20 +75,100 @@ export function BackIndicator() {
   );
 }
 
+// Cache reverse-geocode w obrębie sesji (współdzielony przez oba egzemplarze przycisku).
+const cityCache = new Map<string, string | null>();
+
 /**
- * „Moja lokalizacja" — na stronie głównej uruchamia geolokalizację (event, który
- * łapie HomeSearch); z podstron wraca na główną z flagą ?lokalizuj=1.
+ * „Moja lokalizacja". Gdy nie znamy lokalizacji — przycisk uruchamia geolokalizację
+ * (event łapany przez HomeSearch; z podstron wraca na główną z ?lokalizuj=1). Gdy
+ * lokalizacja jest ustawiona — pokazuje miasto (reverse geocode) i czerwony „×"
+ * do jej usunięcia.
  */
 export function LocateButton() {
   const pathname = usePathname();
   const router = useRouter();
-  const onClick = () => {
+  const [loc, setLoc] = useState<Coords | null>(null);
+  const [city, setCity] = useState<string | null>(null);
+
+  // Odczyt zapisanej lokalizacji + nasłuch ustalenia / wyczyszczenia (z innych miejsc).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoc(readLastLocation());
+    const onLocated = (e: Event) =>
+      setLoc((e as CustomEvent<Coords>).detail ?? readLastLocation());
+    const onCleared = () => {
+      setLoc(null);
+      setCity(null);
+    };
+    window.addEventListener("otoapteka:located", onLocated);
+    window.addEventListener("otoapteka:location-cleared", onCleared);
+    return () => {
+      window.removeEventListener("otoapteka:located", onLocated);
+      window.removeEventListener("otoapteka:location-cleared", onCleared);
+    };
+  }, []);
+
+  // Ustal nazwę miasta dla bieżącej lokalizacji (z cache lub reverse geocode).
+  useEffect(() => {
+    if (!loc) return;
+    const key = `${loc.lat.toFixed(3)},${loc.lng.toFixed(3)}`;
+    if (cityCache.has(key)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCity(cityCache.get(key) ?? null);
+      return;
+    }
+    const ctrl = new AbortController();
+    let alive = true;
+    void reverseCity(loc.lat, loc.lng, ctrl.signal).then((c) => {
+      cityCache.set(key, c);
+      if (alive) setCity(c);
+    });
+    return () => {
+      alive = false;
+      ctrl.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc?.lat, loc?.lng]);
+
+  const onLocate = () => {
     if (pathname === "/") window.dispatchEvent(new Event("otoapteka:locate"));
     else router.push("/?lokalizuj=1");
   };
+  const clear = () => {
+    clearLastLocation();
+    setLoc(null);
+    setCity(null);
+    window.dispatchEvent(new Event("otoapteka:location-cleared"));
+  };
+
+  if (loc) {
+    return (
+      <div className="inline-flex shrink-0 items-center gap-1 rounded-sm border-2 border-ink/15 bg-surface py-1 pl-2.5 pr-1">
+        <button
+          onClick={onLocate}
+          title="Zmień lokalizację"
+          className="pressable inline-flex items-center gap-1.5 text-sm font-bold text-ink transition-colors hover:text-pharma"
+        >
+          <MapPin className="h-4 w-4 shrink-0 text-pharma" aria-hidden />
+          <span className="hidden max-w-[9rem] truncate sm:inline">
+            {city ?? loc.label ?? "Twoja lokalizacja"}
+          </span>
+        </button>
+        <button
+          onClick={clear}
+          aria-label="Usuń lokalizację"
+          title="Usuń lokalizację"
+          className="pressable grid h-6 w-6 shrink-0 place-items-center rounded-full bg-transparent text-danger transition-colors hover:bg-danger/10"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <button
-      onClick={onClick}
+      onClick={onLocate}
       className="pressable inline-flex shrink-0 items-center gap-2 rounded-sm border-2 border-ink/15 bg-surface px-3.5 py-2 text-sm font-bold text-ink transition-colors hover:border-pharma hover:text-pharma"
     >
       <MapPin className="h-4 w-4" aria-hidden />

@@ -87,4 +87,54 @@ export class NominatimService {
       clearTimeout(timeout);
     }
   }
+
+  /** Reverse geocode: współrzędne → nazwa miejscowości. null gdy brak / poza Polską / błąd. */
+  async reverseCity(lat: number, lng: number): Promise<string | null> {
+    if (!this.inPoland(lat, lng)) return null;
+    await this.rateLimit();
+
+    const url = new URL(`${this.baseUrl}/reverse`);
+    url.searchParams.set('lat', String(lat));
+    url.searchParams.set('lon', String(lng));
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('zoom', '13'); // poziom miasta/dzielnicy
+    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('accept-language', 'pl');
+
+    // SSRF-guard: tylko skonfigurowany host Nominatim.
+    if (url.host !== this.allowedHost) {
+      this.logger.error(`Zablokowano reverse do niedozwolonego hosta: ${url.host}`);
+      return null;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': this.userAgent, Accept: 'application/json' },
+        redirect: 'error',
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        this.logger.warn(`Nominatim reverse HTTP ${res.status} dla ${lat},${lng}`);
+        return null;
+      }
+      const data = (await res.json()) as { address?: Record<string, string> };
+      const a = data.address ?? {};
+      return (
+        a.city ||
+        a.town ||
+        a.village ||
+        a.municipality ||
+        a.city_district ||
+        a.county ||
+        null
+      );
+    } catch (e) {
+      this.logger.warn(`Błąd reverse (${lat},${lng}): ${(e as Error).message}`);
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 }

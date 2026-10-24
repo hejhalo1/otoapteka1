@@ -165,6 +165,25 @@ html::-webkit-scrollbar {
   }
 }
 
+/* Karta apteki (lista wyników): grubszy border (2px) + ten sam subtelny cień co
+   wszędzie (bez kolorowej poświaty). Na hover delikatny lift i miękki, jasny
+   niebieski border — bez tworzenia nowego koloru cienia. */
+.pharmacy-card {
+  border: 2px solid var(--color-line);
+  box-shadow: var(--shadow-card);
+  transition:
+    box-shadow 260ms var(--ease-out),
+    transform 260ms var(--ease-out),
+    border-color 260ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pharmacy-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--color-pharma) 40%, var(--color-line));
+    box-shadow: var(--shadow-lift);
+  }
+}
+
 /* Zielony pasek akcentu wysuwający się na lewej krawędzi karty przy hoverze. */
 .card-accent::before {
   content: "";
@@ -385,7 +404,8 @@ html::-webkit-scrollbar {
   .reveal.is-visible {
     animation: none;
   }
-  .card-hover:hover {
+  .card-hover:hover,
+  .pharmacy-card:hover {
     transform: none;
   }
   .pressable:active {
@@ -405,36 +425,39 @@ html::-webkit-scrollbar {
   }
 }
 
-/* Leaflet: kontener mapy. isolation zamyka wysokie z-indexy paneli Leafleta
-   (400–1000) we własnym kontekście — bez tego mapa najeżdża na sticky header. */
-.leaflet-container {
+/* MapLibre GL: font serwisu + isolation (zamyka wewnętrzne z-indexy, by mapa nie
+   najeżdżała na sticky header). Zaokrąglenie zapewnia kontener-rodzic (overflow-hidden). */
+.maplibregl-map {
   font-family: var(--font-sans);
-  border-radius: var(--radius-lg);
   isolation: isolate;
 }
 
-/* Mapa w trybie wskazywania punktu — krzyżyk sygnalizuje „kliknij, aby wybrać”. */
-.map-pickable .leaflet-grab {
+/* Tryb wskazywania punktu — krzyżyk „kliknij, aby wybrać”. */
+.map-pickable .maplibregl-canvas {
   cursor: crosshair;
 }
 
-/* Kontrolki zoomu Leafleta w stylu serwisu (zaokrąglone, miękki cień). */
-.leaflet-control-zoom.leaflet-bar {
-  border: 1px solid var(--color-line);
+/* Popup w stylu serwisu. */
+.maplibregl-popup-content {
   border-radius: 12px;
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-pop);
+  padding: 10px 12px;
+}
+.maplibregl-popup-close-button {
+  padding: 0 6px;
+  font-size: 18px;
+  color: var(--color-muted);
+}
+
+/* Kontrolki (zoom, atrybucja) w stylu serwisu. */
+.maplibregl-ctrl-group {
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
   overflow: hidden;
   box-shadow: var(--shadow-card);
 }
-.leaflet-control-zoom.leaflet-bar a {
-  width: 36px;
-  height: 36px;
-  line-height: 36px;
-  color: var(--color-ink-soft);
-  font-weight: 700;
-  border-bottom-color: var(--color-line);
-  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
-}
-.leaflet-control-zoom.leaflet-bar a:hover {
-  background: var(--color-pharma-soft);
-  color: var(--color-pharma-dark);
+.maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
 }

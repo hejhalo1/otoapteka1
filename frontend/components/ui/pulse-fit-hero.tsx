@@ -156,7 +156,7 @@ export function PulseFitHero({
           initial={reduce ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="relative z-10 w-full px-4 py-8"
+          className="relative z-10 w-full"
         >
           {children}
         </motion.div>

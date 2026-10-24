@@ -187,10 +187,6 @@ export function PharmacyResults({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-black uppercase tracking-wide text-ink sm:text-2xl">
-        Dostępne apteki
-      </h2>
-
       {/* Wspólny, „uziemiony" pasek wszystkich opcji (dzień, „tylko czynne", promień,
           punkt) — kwadratowe rogi, przyklejony przy scrollu, więc zawsze widoczny. */}
       <div className="sticky top-[5.25rem] z-20 rounded-md border border-line bg-surface/80 px-3 py-2.5 shadow-[var(--shadow-card)] backdrop-blur">

@@ -46,6 +46,23 @@ export async function geocodePlace(
   return res.json() as Promise<GeocodedPlace>;
 }
 
+// Klient — reverse geocode: współrzędne → nazwa miejscowości (do wskaźnika lokalizacji
+// w headerze). Zwraca null, gdy nie udało się ustalić (błąd nie przerywa UI).
+export async function reverseCity(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/geo/reverse?lat=${lat}&lng=${lng}`, { signal });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { city: string | null };
+    return data.city ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Klient — aktywne slajdy galerii promocyjnej.
 export interface PromoSlide {
   id: string;

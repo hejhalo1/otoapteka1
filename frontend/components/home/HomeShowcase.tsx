@@ -1,144 +1,169 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Navigation, Search } from "lucide-react";
-import type { ProgramCard } from "@/components/ui/pulse-fit-hero";
-import {
-  ProgressSlider,
-  SliderBtn,
-  SliderBtnGroup,
-  SliderContent,
-  SliderWrapper,
-} from "@/components/ui/progressive-carousel";
-import { cn } from "@/lib/utils";
+import { type CSSProperties, useState } from "react";
+import { MapPin, MessageSquareText, Moon } from "lucide-react";
+import { GEO_ERROR_MESSAGES, GeoError, getCurrentPosition } from "@/lib/geo";
+import { readLastLocation, saveLastLocation } from "@/lib/last-location";
 
-// Hero strony głównej — jeden złączony blok (bez przerwy), zaokrąglony na zewnątrz:
-//  • lewa (50%): „Znajdź najbliższą aptekę" na tle zdjęcia + przyciski (Zlokalizuj / Mapa),
-//  • prawa (50%): galeria zdjęć (dawniej była tu mapa — teraz mapa jest w wynikach niżej).
-// Obie kolumny równej wysokości; galeria wypełnia prawą stronę „na styk".
-
+// Hero strony głównej: szeroki baner z ilustracją w tle (main_background_image.png),
+// nagłówek po lewej, a pod spodem trzy karty-wejścia. „Info z aptek" i „Dyżury"
+// wymagają lokalizacji — bez niej klik prosi o nią i dopiero potem przechodzi dalej.
 export function HomeShowcase({
-  programs,
   locating,
   geoError,
   onLocate,
 }: {
-  programs: ProgramCard[];
   locating: boolean;
   geoError: string | null;
   onLocate: () => void;
 }) {
   const router = useRouter();
-  const hasGallery = programs.length > 0;
+  const [busy, setBusy] = useState<string | null>(null);
+  const [navError, setNavError] = useState<string | null>(null);
+
+  // Przejście do podstrony wymagającej lokalizacji — jeśli jej nie mamy, najpierw prosimy.
+  const goWithLocation = async (path: string, key: string) => {
+    setNavError(null);
+    if (readLastLocation()) {
+      router.push(path);
+      return;
+    }
+    setBusy(key);
+    try {
+      const c = await getCurrentPosition();
+      saveLastLocation({ ...c, label: "Twoja lokalizacja" });
+      router.push(path);
+    } catch (e) {
+      setNavError(
+        GEO_ERROR_MESSAGES[e as GeoError] ?? "Udostępnij lokalizację, aby przejść dalej.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const cards = [
+    {
+      key: "near",
+      color: "#15803d",
+      icon: MapPin,
+      title: "Najbliższa apteka",
+      desc: "Znajdź aptekę w pobliżu i zobacz odległość.",
+      onClick: onLocate,
+      loading: locating,
+    },
+    {
+      key: "info",
+      color: "#0b4f9e",
+      icon: MessageSquareText,
+      title: "Info z apteki",
+      desc: "Aktualne informacje, usługi i komunikaty.",
+      onClick: () => goWithLocation("/info-z-aptek", "info"),
+      loading: busy === "info",
+    },
+    {
+      key: "duty",
+      color: "#c2410c",
+      icon: Moon,
+      title: "Apteka dyżurna dziś",
+      desc: "Sprawdź, która apteka pełni dyżur w Twojej okolicy.",
+      onClick: () => goWithLocation("/dyzury", "duty"),
+      loading: busy === "duty",
+    },
+  ];
 
   return (
-    <div className="mx-auto grid w-full max-w-[104rem] grid-cols-1 items-stretch overflow-hidden rounded-[2rem] border border-line shadow-[var(--shadow-card)] lg:h-[440px] lg:grid-cols-2">
-      {/* ── Lewo: napis + zdjęcie w tle + przyciski ── */}
-      <section className="relative flex min-h-[340px] flex-col justify-center bg-surface p-6 sm:p-8 lg:min-h-0">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-left bg-cover opacity-60"
-          style={{ backgroundImage: "url('/background_img.png')" }}
-        />
-        {/* Fade do bieli przy prawej krawędzi — miękkie przejście w galerię */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 55%, rgba(255,255,255,0.8) 82%, #ffffff 100%)",
-          }}
-        />
-
-        <div className="relative z-10 max-w-md rounded-2xl bg-white/85 p-5 shadow-sm backdrop-blur-sm sm:p-6">
-          <h2 className="text-3xl font-black leading-[1.05] tracking-tight text-ink sm:text-4xl">
-            Znajdź
-            <br />
-            najbliższą aptekę
-          </h2>
-          <p className="mt-3 text-sm text-ink-soft sm:text-base">
-            Sprawdź, która apteka jest otwarta i jak szybko do niej dotrzesz.
-          </p>
-
-          <div className="mt-5 flex flex-col gap-2.5">
-            <button
-              onClick={onLocate}
-              disabled={locating}
-              className="pressable inline-flex items-center justify-center gap-3 rounded-lg bg-pharma px-5 py-3.5 text-base font-bold text-white shadow-[var(--shadow-card)] transition-colors hover:bg-pharma-dark disabled:opacity-70"
-            >
-              <Navigation className="h-5 w-5" aria-hidden />
-              {locating ? "Ustalanie…" : "Użyj mojej lokalizacji"}
-            </button>
-            <button
-              onClick={() => router.push("/apteki")}
-              className="pressable inline-flex items-center justify-center gap-3 rounded-lg px-5 py-3 text-sm font-bold text-ink transition-colors hover:bg-bg"
-            >
-              <Search className="h-5 w-5" aria-hidden />
-              Wyszukaj
-            </button>
-          </div>
-
-          {geoError && (
-            <p
-              className="mt-3 rounded-xl bg-danger/10 px-4 py-2.5 text-sm font-semibold text-danger"
-              role="alert"
-            >
-              {geoError}
+    <div className="w-full">
+      {/* TEST: bez panelu-ramki — hero i karty na całą szerokość ekranu. */}
+      <div>
+        {/* HERO — ilustracja + nagłówek, pełny bleed (bez ramki/zaokrągleń), styka się z headerem */}
+        <div className="relative flex min-h-[400px] flex-col overflow-hidden bg-surface lg:min-h-[470px]">
+          {/* Ilustracja w tle — BEZ skalowania kadrującego (contain = cały obraz, bez zoomu
+              i bez przycinania przez CSS), zakotwiczona po prawej. Kadr ustawiasz, przycinając
+              sam plik main_background_image.png — to, co w nim jest, pokaże się wiernie. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-contain bg-right bg-no-repeat"
+            style={{ backgroundImage: "url('/main_background_image.png')" }}
+          />
+          {/* Przejaśnienie tylko po lewej (pod nagłówkiem) — reszta zdjęcia zostaje widoczna */}
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0.99) 22%, rgba(255,255,255,0.72) 34%, rgba(255,255,255,0) 44%)",
+            }}
+          />
+          {/* Nagłówek */}
+          <div className="relative flex-1 px-6 pb-8 pt-8 sm:px-10 sm:pt-12 lg:pt-16">
+            <h1 className="max-w-2xl text-3xl font-black leading-[1.1] tracking-tight text-ink sm:text-4xl lg:text-[2.9rem]">
+              Znajdź najbliższą aptekę, sprawdź dyżur i zobacz co oferuje apteka.
+            </h1>
+            <p className="mt-3 max-w-md text-sm font-semibold text-ink-soft sm:text-base">
+              Wszystkie apteki w Twojej okolicy w jednym miejscu.
             </p>
-          )}
+          </div>
         </div>
-      </section>
 
-      {/* ── Prawo: galeria zdjęć (na styk, tam gdzie wcześniej była mapa) ── */}
-      <section className={cn("relative min-h-[320px] bg-primary lg:min-h-0", !hasGallery && "hidden lg:block")}>
-        {hasGallery && (
-          <ProgressSlider activeSlider="slide-0" duration={5000} className="h-full overflow-hidden">
-            <SliderContent className="relative h-full">
-              {programs.map((p, i) => (
-                <SliderWrapper key={i} value={`slide-${i}`} className="absolute inset-0">
-                  {p.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- host uploadów; galeria nie potrzebuje next/image
-                    <img src={p.image} alt={p.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div
-                      className="grid h-full w-full place-items-center text-white/90"
-                      style={{
-                        backgroundImage: `linear-gradient(160deg, ${p.gradient?.from ?? "#0b4f9e"}, ${p.gradient?.to ?? "#083a72"})`,
-                      }}
-                    >
-                      {p.icon}
-                    </div>
-                  )}
-                  <div
-                    className="pointer-events-none absolute inset-0"
-                    style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.72) 100%)" }}
-                  />
-                  <div className="absolute inset-x-0 top-0 p-5">
-                    <h3 className="max-w-[90%] text-lg font-bold leading-snug text-white drop-shadow-md sm:text-xl">
-                      {p.title}
-                    </h3>
-                  </div>
-                </SliderWrapper>
-              ))}
-            </SliderContent>
-
-            <SliderBtnGroup className="absolute inset-x-3 bottom-3 z-20 flex divide-x divide-white/40 overflow-hidden rounded-xl border border-white/40 bg-white/70 backdrop-blur-md">
-              {programs.map((p, i) => (
-                <SliderBtn
-                  key={i}
-                  value={`slide-${i}`}
-                  className="flex-1 cursor-pointer px-2.5 py-2 text-left"
-                  progressBarClass="h-full bg-pharma/20"
-                >
-                  <span className="relative z-10 block truncate text-[10px] font-bold uppercase tracking-wide text-ink">
-                    {p.category}
+        {/* KARTY — trzy osobne panele; boczne przerwy, by nie stykały się z krawędziami ekranu */}
+        <div className="mt-2.5 grid gap-2.5 px-3 sm:mt-3.5 sm:grid-cols-3 sm:gap-3.5 sm:px-5">
+          {cards.map((c) => {
+            const Icon = c.icon;
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={c.onClick}
+                disabled={c.loading}
+                style={{ "--card-color": c.color } as CSSProperties}
+                className="pressable group relative block overflow-hidden rounded-[1.25rem] border border-line bg-surface text-left shadow-[var(--shadow-card)] transition-colors duration-500 hover:border-[var(--card-color)] disabled:opacity-70"
+              >
+                {/* WARSTWA SPOCZYNKOWA (biała) — wyjeżdża w górę na hover */}
+                <div className="flex items-center gap-3.5 px-5 py-6 transition-transform duration-500 group-hover:-translate-y-[150%] sm:px-6 sm:py-7">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--card-color)] text-white shadow-sm">
+                    <Icon className="h-5 w-5" aria-hidden />
                   </span>
-                </SliderBtn>
-              ))}
-            </SliderBtnGroup>
-          </ProgressSlider>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-lg font-black tracking-wide text-ink sm:text-xl">
+                      {c.title}
+                    </span>
+                    <span className="mt-0.5 block text-sm leading-snug text-ink-soft">
+                      {c.loading ? "Ustalanie lokalizacji…" : c.desc}
+                    </span>
+                  </span>
+                </div>
+
+                {/* WARSTWA HOVER — wjeżdża z dołu; skośny kolorowy fill wypełnia tło,
+                    tekst i kółko w wersji „na kolorze" (biały). */}
+                <div className="absolute inset-0 flex translate-y-full items-center gap-3.5 px-5 py-6 text-white transition-transform duration-500 group-hover:translate-y-0 sm:px-6 sm:py-7">
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 translate-y-full skew-y-12 scale-y-0 bg-[var(--card-color)] transition duration-500 group-hover:translate-y-0 group-hover:scale-150"
+                  />
+                  <span className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[var(--card-color)] shadow-sm">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <span className="relative z-10 min-w-0 flex-1">
+                    <span className="block text-lg font-black tracking-wide sm:text-xl">
+                      {c.title}
+                    </span>
+                    <span className="mt-0.5 block text-sm leading-snug text-white/90">
+                      {c.loading ? "Ustalanie lokalizacji…" : c.desc}
+                    </span>
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {(navError || geoError) && (
+          <p className="mt-2.5 px-1 text-sm font-semibold text-danger" role="alert">
+            {navError ?? geoError}
+          </p>
         )}
-      </section>
+      </div>
     </div>
   );
 }

@@ -34,7 +34,7 @@ export interface PharmacyCard {
   photoUrl: string | null;
   openStatus: OpenStatus;
   hoursForDate: DayHours[];
-  latestAnnouncement: { title: string; type: string; publishedAt: string | null } | null;
+  announcements: { title: string; body: string; type: string; publishedAt: string | null }[];
 }
 
 export interface PharmacyListResponse {

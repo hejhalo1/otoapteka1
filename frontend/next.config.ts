@@ -12,20 +12,30 @@ try {
 // Hosty CartoDB — rastrowe kafle Positron (zwykłe obrazki → tylko img-src).
 const carto = "https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com";
 
-// CSP: 'unsafe-inline' dla script/style to pragmatyczny kompromis z Next+Leaflet
-// (docelowo strict CSP z nonce przez middleware). img-src dopuszcza kafelki
-// (OSM + CartoDB) i API (w tym /uploads).
+// OpenFreeMap — darmowe kafelki wektorowe + fonty dla MapLibre GL (styl „toner").
+// Pobierane fetch-em (.pbf) → muszą być w connect-src.
+const openfreemap = "https://tiles.openfreemap.org";
+
+// W trybie deweloperskim Next/Turbopack (HMR, React Refresh) oraz ładowanie chunku
+// workera MapLibre wymagają 'unsafe-eval'. Produkcja zostaje ścisła (bez eval).
+const isDev = process.env.NODE_ENV !== "production";
+
+// CSP: 'unsafe-inline' dla script/style to pragmatyczny kompromis z Next.
+// MapLibre GL: worker z blob:, kafelki wektorowe + fonty z OpenFreeMap (connect-src).
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' blob:${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
+  // MapLibre GL tworzy web workera z blob: URL (worker-src + child-src dla starszych przeglądarek).
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
   `img-src 'self' data: blob: ${tileHost} ${apiUrl} ${carto}`,
-  `connect-src 'self' ${apiUrl}`,
+  `connect-src 'self' ${apiUrl} ${openfreemap}`,
   "upgrade-insecure-requests",
 ].join("; ");
 

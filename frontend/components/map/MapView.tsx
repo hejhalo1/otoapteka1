@@ -1,15 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { LeafletMapProps } from "./LeafletMap";
+import type { MapProps } from "./MapLibreMap";
 
-// Leaflet dotyka window → ładowany wyłącznie po stronie klienta (ssr:false),
+// MapLibre GL dotyka window/WebGL → ładowany wyłącznie po stronie klienta (ssr:false),
 // co jest dozwolone tylko wewnątrz Client Component.
-const LeafletMap = dynamic(() => import("./LeafletMap"), {
+const MapLibreMap = dynamic(() => import("./MapLibreMap"), {
   ssr: false,
   loading: () => <div className="skeleton h-full w-full rounded-2xl" />,
 });
 
-export function MapView(props: LeafletMapProps) {
-  return <LeafletMap {...props} />;
+export function MapView(props: MapProps) {
+  return <MapLibreMap {...props} />;
 }

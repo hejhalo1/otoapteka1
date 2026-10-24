@@ -58,11 +58,13 @@ export interface PharmacyCard {
   duty: { startsAt: string; endsAt: string } | null;
   openStatus: OpenStatus;
   hoursForDate: DayHours[];
-  latestAnnouncement: {
+  /** Ostatnie komunikaty apteki (max 3, od najnowszego) — do kart listy. */
+  announcements: {
     title: string;
+    body: string;
     type: string;
     publishedAt: string | null;
-  } | null;
+  }[];
 }
 
 export interface PharmacyListResponse {
@@ -200,7 +202,7 @@ export class PharmaciesService {
       const segments = this.toSegments(hoursByPharmacy.get(r.id) ?? []);
       const duties = dutiesByPharmacy.get(r.id) ?? [];
       const openStatus = computeOpenStatus(segments, duties, referenceTime);
-      const ann = announcementByPharmacy.get(r.id) ?? null;
+      const anns = announcementByPharmacy.get(r.id) ?? [];
       const nextDuty = duties
         .filter((d) => d.endsAt.getTime() >= referenceTime.getTime())
         .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
@@ -226,7 +228,7 @@ export class PharmaciesService {
           : null,
         openStatus,
         hoursForDate: this.hoursForDay(segments, refDow),
-        latestAnnouncement: ann,
+        announcements: anns,
       };
     });
 
@@ -294,7 +296,7 @@ export class PharmaciesService {
     const dutiesByPharmacy = new Map<string, DutyInterval[]>();
     const announcementByPharmacy = new Map<
       string,
-      { title: string; type: string; publishedAt: string | null }
+      { title: string; body: string; type: string; publishedAt: string | null }[]
     >();
     if (ids.length === 0)
       return [hoursByPharmacy, dutiesByPharmacy, announcementByPharmacy] as const;
@@ -333,6 +335,7 @@ export class PharmaciesService {
         select: {
           pharmacyId: true,
           title: true,
+          body: true,
           type: true,
           publishedAt: true,
         },
@@ -349,13 +352,17 @@ export class PharmaciesService {
       arr.push({ startsAt: d.startsAt, endsAt: d.endsAt });
       dutiesByPharmacy.set(d.pharmacyId, arr);
     }
+    // announcements przychodzą posortowane malejąco po publishedAt — bierzemy do 3 na aptekę.
     for (const a of announcements) {
-      if (!announcementByPharmacy.has(a.pharmacyId)) {
-        announcementByPharmacy.set(a.pharmacyId, {
+      const arr = announcementByPharmacy.get(a.pharmacyId) ?? [];
+      if (arr.length < 3) {
+        arr.push({
           title: a.title,
+          body: a.body,
           type: a.type,
           publishedAt: a.publishedAt?.toISOString() ?? null,
         });
+        announcementByPharmacy.set(a.pharmacyId, arr);
       }
     }
     return [hoursByPharmacy, dutiesByPharmacy, announcementByPharmacy] as const;

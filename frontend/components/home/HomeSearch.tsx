@@ -43,6 +43,7 @@ export function HomeSearch() {
   const resetLocation = () => {
     clearLastLocation(); // „zmień” = zapomnij zapisaną lokalizację
     setCoords(null);
+    window.dispatchEvent(new Event("otoapteka:location-cleared")); // odśwież wskaźnik w headerze
     // Wyniki znikają (coords=null) — przewiń z powrotem do hero, żeby użytkownik
     // od razu widział przyciski lokalizacji (inaczej zostaje na pustym miejscu).
     if (typeof window !== "undefined") {
@@ -72,12 +73,18 @@ export function HomeSearch() {
     }
   }, [applyCoords]);
 
-  // Geolokalizacja z headera (event) + wejście z flagą ?lokalizuj=1.
+  // Geolokalizacja z headera (event) + wejście z flagą ?lokalizuj=1 + wyczyszczenie
+  // lokalizacji z headera (czerwony „×") — wtedy chowamy wyniki.
   useEffect(() => {
     window.addEventListener("otoapteka:locate", locate);
+    const onCleared = () => setCoords(null);
+    window.addEventListener("otoapteka:location-cleared", onCleared);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (new URLSearchParams(window.location.search).has("lokalizuj")) void locate();
-    return () => window.removeEventListener("otoapteka:locate", locate);
+    return () => {
+      window.removeEventListener("otoapteka:locate", locate);
+      window.removeEventListener("otoapteka:location-cleared", onCleared);
+    };
   }, [locate]);
 
   // Odtwórz ostatnią lokalizację z pamięci (tylko przy zgodzie funkcjonalnej).
