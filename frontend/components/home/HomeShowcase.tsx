@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { type CSSProperties, useState } from "react";
-import { MapPin, MessageSquareText, Moon } from "lucide-react";
+import { MapPin, MessageSquareText, Moon, PillBottle } from "lucide-react";
 import { GEO_ERROR_MESSAGES, GeoError, getCurrentPosition } from "@/lib/geo";
 import { readLastLocation, saveLastLocation } from "@/lib/last-location";
 
 // Hero strony głównej: szeroki baner z ilustracją w tle (main_background_image.png),
-// nagłówek po lewej, a pod spodem trzy karty-wejścia. „Info z aptek" i „Dyżury"
+// nagłówek po lewej, a pod spodem cztery karty-wejścia. „Info z aptek" i „Dyżury"
 // wymagają lokalizacji — bez niej klik prosi o nią i dopiero potem przechodzi dalej.
 export function HomeShowcase({
   locating,
@@ -71,6 +71,15 @@ export function HomeShowcase({
       onClick: () => goWithLocation("/dyzury", "duty"),
       loading: busy === "duty",
     },
+    {
+      key: "recalls",
+      color: "#b91c1c",
+      icon: PillBottle,
+      title: "Wycofane leki",
+      desc: "Sprawdź, które leki zostały wycofane z obrotu.",
+      onClick: () => router.push("/wycofane-leki"),
+      loading: false,
+    },
   ];
 
   return (
@@ -107,8 +116,8 @@ export function HomeShowcase({
           </div>
         </div>
 
-        {/* KARTY — trzy osobne panele; boczne przerwy, by nie stykały się z krawędziami ekranu */}
-        <div className="mt-2.5 grid gap-2.5 px-3 sm:mt-3.5 sm:grid-cols-3 sm:gap-3.5 sm:px-5">
+        {/* KARTY — cztery osobne panele; boczne przerwy, by nie stykały się z krawędziami ekranu */}
+        <div className="mt-2.5 grid gap-2.5 px-3 sm:mt-3.5 sm:grid-cols-2 sm:gap-3.5 sm:px-5 lg:grid-cols-4">
           {cards.map((c) => {
             const Icon = c.icon;
             return (
