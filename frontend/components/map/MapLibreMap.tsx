@@ -34,8 +34,15 @@ export interface MapProps {
    * Wyzerowanie (null) → płynny powrót do center/zoom.
    */
   fitPair?: [{ lat: number; lng: number }, { lat: number; lng: number }] | null;
+  /**
+   * Przebieg trasy ([lng, lat], np. z OSRM) — rysowany linią pod pinami; mapa kadruje
+   * całą trasę (nie przybliżając ponad `zoom`). Ma pierwszeństwo przed fitPair.
+   */
+  route?: [number, number][] | null;
   className?: string;
 }
+
+const ROUTE_SOURCE = "route";
 
 // Styl wektorowy „Basic" (openmaptiles/maptiler-basic) podpięty pod OpenFreeMap
 // (darmowe kafelki + fonty, bez klucza) — patrz public/map/basic.json.
@@ -92,10 +99,13 @@ export default function MapLibreMap({
   onPick,
   pickMarker,
   fitPair,
+  route,
   className,
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  // Styl wczytany (event „load") — dopiero wtedy wolno dodawać źródła/warstwy.
+  const loadedRef = useRef(false);
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
   const pickRef = useRef<maplibregl.Marker | null>(null);
 
@@ -133,6 +143,9 @@ export default function MapLibreMap({
     map.on("click", (e: maplibregl.MapMouseEvent) =>
       onPickRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }),
     );
+    map.on("load", () => {
+      loadedRef.current = true;
+    });
     // Diagnostyka: wszelkie błędy stylu/źródła/kafelków wypisujemy jawnie w konsoli.
     map.on("error", (e) => {
       console.error("[maplibre]", e.error?.message ?? e);
@@ -147,6 +160,7 @@ export default function MapLibreMap({
       pickRef.current = null;
       map.remove();
       mapRef.current = null;
+      loadedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -212,21 +226,86 @@ export default function MapLibreMap({
     }
   }, [pickMarker]);
 
-  // ── Kadrowanie: fitPair (oba punkty) albo dociąganie do center/zoom ──
+  // ── Trasa: linia z białą obwódką, pod etykietami ulic i pod pinami (DOM) ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const data: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: route?.length
+        ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: route } }]
+        : [],
+    };
+    const apply = () => {
+      const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
+      if (source) {
+        source.setData(data);
+        return;
+      }
+      if (!route?.length) return;
+      map.addSource(ROUTE_SOURCE, { type: "geojson", data });
+      const beforeId = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+      const layout = { "line-join": "round", "line-cap": "round" } as const;
+      map.addLayer(
+        {
+          id: "route-casing",
+          type: "line",
+          source: ROUTE_SOURCE,
+          layout,
+          paint: { "line-color": "#ffffff", "line-width": 9 },
+        },
+        beforeId,
+      );
+      map.addLayer(
+        {
+          id: "route-line",
+          type: "line",
+          source: ROUTE_SOURCE,
+          layout,
+          paint: { "line-color": "#0b4f9e", "line-width": 5 },
+        },
+        beforeId,
+      );
+    };
+    if (loadedRef.current) {
+      apply();
+      return;
+    }
+    map.once("load", apply);
+    return () => {
+      map.off("load", apply);
+    };
+  }, [route]);
+
+  // Klucz trasy do zależności kadrowania (tablica zmienia tożsamość przy każdej odpowiedzi).
+  const routeKey = route?.length ? `${route.length}:${route[0]}:${route[route.length - 1]}` : "";
+
+  // ── Kadrowanie: trasa / fitPair (oba punkty) albo dociąganie do center/zoom ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const a = fitPair?.[0];
     const b = fitPair?.[1];
+    const points: [number, number][] = route?.length
+      ? route
+      : a && b
+        ? [
+            [a.lng, a.lat],
+            [b.lng, b.lat],
+          ]
+        : [];
 
-    if (a && b) {
+    if (points.length >= 2) {
       hadFit.current = true;
-      const bounds = new maplibregl.LngLatBounds()
-        .extend([a.lng, a.lat])
-        .extend([b.lng, b.lat]);
+      const bounds = points.reduce(
+        (acc, p) => acc.extend(p),
+        new maplibregl.LngLatBounds(points[0], points[0]),
+      );
       map.fitBounds(bounds, {
-        padding: { top: 56, left: 40, right: 40, bottom: 40 },
-        maxZoom: 16,
+        // Dół z zapasem na plakietkę trasy.
+        padding: { top: 56, left: 40, right: 40, bottom: route?.length ? 80 : 40 },
+        // Trasa nie przybliża ponad zadany zoom — lista wyników ma widzieć też sąsiednie piny.
+        maxZoom: route?.length ? Math.min(16, zoom ?? 16) : 16,
         duration: 450,
       });
       return;
@@ -243,7 +322,7 @@ export default function MapLibreMap({
     const target = zoom != null && (reset || map.getZoom() < zoom) ? zoom : map.getZoom();
     map.easeTo({ center: [center.lng, center.lat], zoom: target, duration: 300 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [center.lat, center.lng, zoom, fitPair?.[0]?.lat, fitPair?.[0]?.lng, fitPair?.[1]?.lat, fitPair?.[1]?.lng]);
+  }, [center.lat, center.lng, zoom, fitPair?.[0]?.lat, fitPair?.[0]?.lng, fitPair?.[1]?.lat, fitPair?.[1]?.lng, routeKey]);
 
   // ── Reakcja na zmianę rozmiaru kontenera (mapa „dokuje się") ──
   useEffect(() => {

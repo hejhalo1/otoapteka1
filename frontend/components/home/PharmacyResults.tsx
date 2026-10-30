@@ -15,7 +15,9 @@ import { fetchPharmacies } from "@/lib/api";
 import type { Coords } from "@/lib/geo";
 import { warsawISO } from "@/lib/date";
 import type { PharmacyCard, PharmacyListResponse } from "@/lib/types";
+import { useRoute } from "@/lib/use-route";
 import { MapView } from "@/components/map/MapView";
+import { RouteBadge } from "@/components/map/RouteBadge";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Slider } from "@/components/ui/slider-number-flow";
@@ -92,6 +94,9 @@ export function PharmacyResults({
   const [hasMore, setHasMore] = useState(initial?.pagination.hasMore ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Punkt, dla którego wczytano obecną listę — po zmianie punktu stara lista (do czasu
+  // nowej odpowiedzi) nie może wyznaczać „najbliższej" apteki dla trasy.
+  const [itemsCenter, setItemsCenter] = useState<string | null>(null);
   const pageRef = useRef(1);
   const abortRef = useRef<AbortController | null>(null);
   // Gdy mamy dane z SSR, pomiń pierwsze automatyczne pobranie (dla stanu domyślnego).
@@ -132,6 +137,7 @@ export function PharmacyResults({
         );
         if (abortRef.current !== ctrl) return;
         pageRef.current = page;
+        if (replace) setItemsCenter(`${center.lat},${center.lng}`);
         setTotal(res.pagination.total);
         setHasMore(res.pagination.hasMore);
         setItems((prev) => {
@@ -184,6 +190,17 @@ export function PharmacyResults({
     : [];
 
   const pickable = Boolean(onPickPoint);
+
+  // Trasa do najbliższej apteki (lista jest posortowana po dystansie) — tylko gdy punkt
+  // to lokalizacja użytkownika / wskazany punkt; na stronie miasta to środek miasta.
+  const nearest =
+    pickable && center && itemsCenter === `${center.lat},${center.lng}`
+      ? items.find((p) => p.lat != null && p.lng != null)
+      : undefined;
+  const route = useRoute(
+    pickable ? center : null,
+    nearest ? { lat: nearest.lat as number, lng: nearest.lng as number } : null,
+  );
 
   return (
     <div className="space-y-4">
@@ -358,7 +375,18 @@ export function PharmacyResults({
           pickMarker={pickable && center ? center : null}
           markers={markers}
           onPick={onPickPoint}
+          route={route?.coordinates}
         />
+
+        {route && (
+          <RouteBadge
+            title="Najbliższa apteka"
+            distanceMeters={route.distanceMeters}
+            minutes={route.durationMinutes}
+            mode={route.mode}
+            className="left-3"
+          />
+        )}
 
         {pickable && (
           <div className="pointer-events-none absolute left-16 top-3 z-[1001] flex items-center gap-1.5 rounded-xl border bg-surface/90 px-2.5 py-1.5 text-xs font-semibold text-ink-soft shadow-[var(--shadow-card)] backdrop-blur">

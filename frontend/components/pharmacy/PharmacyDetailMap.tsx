@@ -2,23 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { MapView } from "@/components/map/MapView";
-import type { Coords } from "@/lib/geo";
+import { RouteBadge } from "@/components/map/RouteBadge";
+import { type Coords, haversineM } from "@/lib/geo";
 import { readLastLocation } from "@/lib/last-location";
-import { formatDistance } from "@/lib/format";
-
-function haversineM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const R = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
+import { useRoute } from "@/lib/use-route";
 
 /**
- * Mapa apteki + (jeśli znamy ostatnią lokalizację użytkownika) dystans i czas
- * dojścia oraz kadr obejmujący oba punkty. „Pokaż trasę" otwiera nawigację.
+ * Mapa apteki + (jeśli znamy ostatnią lokalizację użytkownika) trasa z OSRM narysowana
+ * na mapie z jej długością i czasem. Zanim trasa przyjdzie (lub gdy się nie da jej
+ * wyznaczyć) — dystans w linii prostej i kadr obejmujący oba punkty.
  */
 export function PharmacyDetailMap({
   lat,
@@ -37,6 +29,7 @@ export function PharmacyDetailMap({
     setUser(readLastLocation());
   }, []);
 
+  const route = useRoute(user, { lat, lng });
   const distM = user ? haversineM({ lat, lng }, user) : null;
   const walkMin = distM != null ? Math.max(1, Math.round(distM / 80)) : null;
   const fitPair: [{ lat: number; lng: number }, { lat: number; lng: number }] | null = user
@@ -54,14 +47,25 @@ export function PharmacyDetailMap({
         markers={[{ lat, lng, name, highlight: true }]}
         pickMarker={user}
         fitPair={fitPair}
+        route={route?.coordinates}
       />
-      {distM != null && (
-        <div className="pointer-events-none absolute bottom-3 right-3 z-[500] rounded-md bg-surface/95 px-3.5 py-2 text-center shadow-[var(--shadow-card)] backdrop-blur">
-          <div className="text-base font-black tabular-nums text-pharma-dark">
-            {formatDistance(distM)}
-          </div>
-          <div className="text-xs font-semibold text-muted">{walkMin} min pieszo</div>
-        </div>
+      {route ? (
+        <RouteBadge
+          distanceMeters={route.distanceMeters}
+          minutes={route.durationMinutes}
+          mode={route.mode}
+          className="right-3 text-center"
+        />
+      ) : (
+        distM != null &&
+        walkMin != null && (
+          <RouteBadge
+            distanceMeters={distM}
+            minutes={walkMin}
+            mode="walk"
+            className="right-3 text-center"
+          />
+        )
       )}
     </div>
   );

@@ -106,3 +106,14 @@ export interface City {
   lat: number;
   lng: number;
 }
+
+export type RouteMode = "walk" | "drive";
+
+/** Trasa A→B z backendu (OSRM) — do narysowania na mapie. */
+export interface Route {
+  mode: RouteMode;
+  distanceMeters: number;
+  durationMinutes: number;
+  /** Przebieg trasy jako [lng, lat] (kolejność GeoJSON). */
+  coordinates: [number, number][];
+}

@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, LocateFixed, MousePointerClick } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
+import { RouteBadge } from "@/components/map/RouteBadge";
 import { fetchPharmacies } from "@/lib/api";
+import { useRoute } from "@/lib/use-route";
 import { CITIES, Coords, getCurrentPosition } from "@/lib/geo";
 import type { PharmacyCard } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
@@ -63,6 +65,11 @@ export default function MapaPage() {
     .filter((p) => p.lat != null && p.lng != null)
     .map((p) => ({ lat: p.lat as number, lng: p.lng as number, name: p.name, slug: p.slug }));
 
+  // Trasa do najbliższej apteki (lista posortowana po dystansie). W trakcie wczytywania
+  // lista dotyczy jeszcze poprzedniego punktu — wtedy bez trasy.
+  const nearest = loading ? undefined : markers[0];
+  const route = useRoute(point, nearest);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -92,14 +99,24 @@ export default function MapaPage() {
       </p>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="h-[60vh] overflow-hidden rounded-2xl border shadow-[var(--shadow-card)]">
+        <div className="relative h-[60vh] overflow-hidden rounded-2xl border shadow-[var(--shadow-card)]">
           <MapView
             center={center}
             zoom={13}
             onPick={handlePick}
             pickMarker={point}
             markers={markers}
+            route={route?.coordinates}
           />
+          {route && (
+            <RouteBadge
+              title="Najbliższa apteka"
+              distanceMeters={route.distanceMeters}
+              minutes={route.durationMinutes}
+              mode={route.mode}
+              className="left-3"
+            />
+          )}
         </div>
 
         <aside className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">

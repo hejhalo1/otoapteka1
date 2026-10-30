@@ -2,6 +2,8 @@ import type {
   City,
   PharmacyDetail,
   PharmacyListResponse,
+  Route,
+  RouteMode,
   SearchParams,
 } from "./types";
 
@@ -61,6 +63,26 @@ export async function reverseCity(
   } catch {
     return null;
   }
+}
+
+// Klient — trasa A→B (OSRM przez backend) do narysowania na mapie. null, gdy nie da się
+// jej wyznaczyć (punkt poza Polską, za daleko, router niedostępny).
+export async function fetchRoute(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  mode: RouteMode,
+  signal?: AbortSignal,
+): Promise<Route | null> {
+  const q = new URLSearchParams({
+    fromLat: String(from.lat),
+    fromLng: String(from.lng),
+    toLat: String(to.lat),
+    toLng: String(to.lng),
+    mode,
+  });
+  const res = await fetch(`${API_URL}/api/geo/route?${q.toString()}`, { signal });
+  if (!res.ok) return null;
+  return res.json() as Promise<Route>;
 }
 
 // Klient — aktywne slajdy galerii promocyjnej.
